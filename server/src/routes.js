@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { state, broadcastStateChange } = require('./state');
 const { getLocalIpAddresses } = require('./networkUtils');
-const { analyzeBatPhysics } = require('./physicsEngine');
+const { analyzeBatPhysics, updateCalibrationProfile } = require('./physicsEngine');
 
 function processTelemetry(data, clientIp, port) {
   state.packetCount++;
@@ -82,6 +82,34 @@ function handleHttpRequest(req, res, publicDir, port) {
       latestPayload: state.latestPayload,
       serverTime: Date.now(),
     }));
+    return;
+  }
+
+  // API Calibration Endpoint (GET & POST)
+  if (req.method === 'GET' && req.url === '/api/calibration') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      status: 'success',
+      calibrationProfile: state.calibrationProfile || {},
+    }));
+    return;
+  }
+
+  if (req.method === 'POST' && req.url === '/api/calibration') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        state.calibrationProfile = payload;
+        updateCalibrationProfile(payload);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'saved', calibrationProfile: state.calibrationProfile }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'error', reason: 'Invalid JSON' }));
+      }
+    });
     return;
   }
 

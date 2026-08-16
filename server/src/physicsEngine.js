@@ -1,4 +1,16 @@
 let maxRecordedSpeed = 0;
+let calibrationProfile = {
+  verticalOffsetDeg: 0,
+  rollCorrectionDeg: 0,
+  pitchCorrectionDeg: 0,
+  accuracyScore: 100,
+};
+
+function updateCalibrationProfile(profile) {
+  if (profile) {
+    calibrationProfile = { ...calibrationProfile, ...profile };
+  }
+}
 
 function analyzeBatPhysics(data) {
   const accel = data.accel || { x: 0, y: 0, z: 0 };
@@ -25,8 +37,10 @@ function analyzeBatPhysics(data) {
     maxRecordedSpeed = speedKmh;
   }
 
-  const betaDeg = (motion.beta || 0) * (180 / Math.PI);
-  const gammaDeg = (motion.gamma || 0) * (180 / Math.PI);
+  // Apply calibration offsets
+  const rawBetaDeg = (motion.beta || 0) * (180 / Math.PI);
+  const betaDeg = rawBetaDeg - (calibrationProfile.verticalOffsetDeg || 0);
+  const gammaDeg = ((motion.gamma || 0) * (180 / Math.PI)) - (calibrationProfile.rollCorrectionDeg || 0);
   const alphaDeg = (motion.alpha || 0) * (180 / Math.PI);
 
   let faceAlignment = 'Square Face (Straight)';
@@ -38,11 +52,13 @@ function analyzeBatPhysics(data) {
     faceAlignment = `Square Face (${gammaDeg.toFixed(1)}°)`;
   }
 
-  let batPlane = 'Vertical Bat';
+  let batPlane = 'Vertical Bat (90°)';
   if (Math.abs(betaDeg) < 35) {
     batPlane = 'Horizontal (Cross-Bat)';
   } else if (Math.abs(betaDeg) < 65) {
     batPlane = 'Angled Bat';
+  } else if (Math.abs(betaDeg - 90) < 15) {
+    batPlane = 'Vertical Bat (90° Calibrated)';
   }
 
   const isImpact = totalG > 2.2 || (gyroMag > 4.0 && totalG > 1.8);
@@ -86,9 +102,11 @@ function analyzeBatPhysics(data) {
     batPlane,
     isImpact,
     detectedShot,
+    calibrationProfile,
   };
 }
 
 module.exports = {
   analyzeBatPhysics,
+  updateCalibrationProfile,
 };

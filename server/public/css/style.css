@@ -482,3 +482,179 @@ footer strong {
   transform: translateY(-2px);
   background: #dc2626;
 }
+
+/* Nav links */
+.nav-menu {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.nav-link {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.nav-link:hover, .nav-link.active {
+  color: var(--text-main);
+  background: var(--yellow-light);
+  border: 1px solid var(--yellow-border);
+}
+
+/* Training Wizard Components */
+.wizard-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.wizard-step {
+  background: var(--bg-card);
+  border: 2px solid var(--border-color);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.wizard-step.active {
+  border-color: var(--yellow-primary);
+  background: var(--yellow-light);
+  box-shadow: 0 4px 14px var(--yellow-glow);
+}
+
+.wizard-step.completed {
+  border-color: var(--green-active);
+  background: var(--green-bg);
+}
+
+.step-num {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.wizard-step.active .step-num {
+  background: var(--yellow-primary);
+  color: #0f172a;
+}
+
+.wizard-step.completed .step-num {
+  background: var(--green-active);
+  color: #ffffff;
+}
+
+.step-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.step-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.step-subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Training Record Cards */
+.record-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.record-box {
+  background: #0f172a;
+  color: #ffffff;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  border: 1px solid #334155;
+  transition: transform 0.15s ease;
+}
+
+.record-box:hover {
+  transform: translateY(-2px);
+  border-color: var(--yellow-primary);
+}
+
+.record-box.recorded {
+  border-color: var(--green-active);
+  background: #064e3b;
+}
+
+.record-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--yellow-primary);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.record-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: #cbd5e1;
+  margin-bottom: 10px;
+}
+
+.btn-capture {
+  width: 100%;
+  background: var(--yellow-primary);
+  color: #0f172a;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.btn-capture:hover {
+  background: var(--yellow-hover);
+}
+
+.btn-capture.captured {
+  background: #10b981;
+  color: #ffffff;
+}
+
+.accuracy-display {
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+  border: 2px solid var(--yellow-border);
+  color: #ffffff;
+}
+
+.accuracy-score {
+  font-size: 48px;
+  font-weight: 900;
+  color: #00e699;
+  line-height: 1.1;
+  margin: 6px 0;
+}
+

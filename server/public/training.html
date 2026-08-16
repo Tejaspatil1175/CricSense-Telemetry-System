@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CricSense - Bat Calibration & Gesture Training Mode</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="navbar-container">
+      <div class="brand">
+        <div class="brand-icon">🏏</div>
+        <div>
+          <div class="brand-title">CricSense Telemetry Server</div>
+          <div class="brand-subtitle">Sensor Calibration & Gesture Training Studio</div>
+        </div>
+      </div>
+      
+      <div class="nav-menu">
+        <a href="/" class="nav-link">📊 Receiver Dashboard</a>
+        <a href="/training.html" class="nav-link active">🎯 Training & 90° Calibration</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="container">
+
+    <!-- Hero Header -->
+    <div class="hero-banner">
+      <div class="hero-text">
+        <h1>🎯 Sensor Accuracy & 90° Trajectory Training Mode</h1>
+        <p>
+          Calibrate your physical bat orientation when held vertically at <strong>90°</strong> and map directional movements (Left, Right, Forward, Back) to train the physics engine for maximum trajectory precision.
+        </p>
+      </div>
+
+      <div class="accuracy-display" style="min-width: 220px;">
+        <div style="font-size: 11px; font-weight: 800; color: var(--yellow-primary); letter-spacing: 1px;">CALIBRATION ACCURACY</div>
+        <div class="accuracy-score" id="accuracyScoreVal">100.0%</div>
+        <div style="font-size: 12px; color: #94a3b8; font-weight: 600;" id="accuracyStatusText">90° Vertical Baseline Set</div>
+      </div>
+    </div>
+
+    <!-- 4-Step Interactive Training Wizard -->
+    <div class="section-title">Calibration & Gesture Training Steps</div>
+    
+    <div class="wizard-steps">
+      <div class="wizard-step active" id="stepCard1" onclick="switchWizardStep(1)">
+        <div class="step-num" id="stepNum1">1</div>
+        <div class="step-info">
+          <span class="step-title">1. Hold Bat at 90°</span>
+          <span class="step-subtitle">Vertical Neutral Baseline</span>
+        </div>
+      </div>
+
+      <div class="wizard-step" id="stepCard2" onclick="switchWizardStep(2)">
+        <div class="step-num" id="stepNum2">2</div>
+        <div class="step-info">
+          <span class="step-title">2. Move Left & Right</span>
+          <span class="step-subtitle">Off-side / Leg-side Axis</span>
+        </div>
+      </div>
+
+      <div class="wizard-step" id="stepCard3" onclick="switchWizardStep(3)">
+        <div class="step-num" id="stepNum3">3</div>
+        <div class="step-info">
+          <span class="step-title">3. Move Forward & Back</span>
+          <span class="step-subtitle">Drive & Push Direction</span>
+        </div>
+      </div>
+
+      <div class="wizard-step" id="stepCard4" onclick="switchWizardStep(4)">
+        <div class="step-num" id="stepNum4">4</div>
+        <div class="step-info">
+          <span class="step-title">4. Calculate & Apply</span>
+          <span class="step-subtitle">Save Precision Profile</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step Content Container -->
+    <div class="card" id="stepContainer" style="margin-bottom: 24px;">
+      
+      <!-- STEP 1: 90 Degree Hold -->
+      <div id="stepView1">
+        <h3 style="font-size: 18px; font-weight: 800; color: var(--text-main); margin-bottom: 6px;">
+          Step 1: Calibrate 90° Vertical Bat Position
+        </h3>
+        <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px;">
+          Hold your physical cricket bat straight up vertically (at a <strong>90°</strong> angle to the ground) with the bat face pointing directly towards the pitch/camera. Tap the button below to store the exact 90° neutral zero-drift reference.
+        </p>
+
+        <div style="background: #0f172a; border-radius: 12px; padding: 16px; margin-bottom: 16px; border: 1px solid #334155; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <div style="font-size: 11px; font-weight: 700; color: #94a3b8;">CURRENT REALTIME PITCH TILT</div>
+            <div style="font-size: 24px; font-weight: 800; color: var(--yellow-primary); font-family: monospace;" id="livePitchAngle">
+              90.0° (Beta: 1.57 rad)
+            </div>
+          </div>
+          <div>
+            <div style="font-size: 11px; font-weight: 700; color: #94a3b8;">SENSORS READY</div>
+            <div style="font-size: 14px; font-weight: 700; color: #00e699;" id="trainingSensorState">
+              ● Connected & Streaming
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-capture" style="padding: 14px; font-size: 14px; background: var(--yellow-primary); color: #0f172a;" id="btnCapture90" onclick="record90DegreeBaseline()">
+          🎯 CAPTURE 90° VERTICAL BASELINE
+        </button>
+      </div>
+
+      <!-- STEP 2: Left & Right Sweep -->
+      <div id="stepView2" style="display: none;">
+        <h3 style="font-size: 18px; font-weight: 800; color: var(--text-main); margin-bottom: 6px;">
+          Step 2: Directional Left / Right Axis Motion
+        </h3>
+        <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px;">
+          Tilt or move your bat to the <strong>Left</strong> (Cover Drive / Off-side path) and tap "Record Left". Then move your bat to the <strong>Right</strong> (Leg-side path) and tap "Record Right".
+        </p>
+
+        <div class="record-grid">
+          <div class="record-box" id="boxLeft">
+            <div class="record-label">⬅️ LEFT MOTION VECTOR</div>
+            <div class="record-val" id="valLeft">Not Recorded</div>
+            <button class="btn-capture" id="btnRecordLeft" onclick="recordDirectionVector('left')">Record Left Position</button>
+          </div>
+
+          <div class="record-box" id="boxRight">
+            <div class="record-label">➡️ RIGHT MOTION VECTOR</div>
+            <div class="record-val" id="valRight">Not Recorded</div>
+            <button class="btn-capture" id="btnRecordRight" onclick="recordDirectionVector('right')">Record Right Position</button>
+          </div>
+        </div>
+
+        <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+          <button class="btn-capture" style="width: auto; padding: 10px 20px;" onclick="switchWizardStep(3)">Next: Step 3 (Forward/Back) →</button>
+        </div>
+      </div>
+
+      <!-- STEP 3: Forward & Back Sweep -->
+      <div id="stepView3" style="display: none;">
+        <h3 style="font-size: 18px; font-weight: 800; color: var(--text-main); margin-bottom: 6px;">
+          Step 3: Directional Forward / Back Motion
+        </h3>
+        <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px;">
+          Extend your bat <strong>Forward</strong> (Straight Drive extension) and tap "Record Forward". Then pull your bat <strong>Back</strong> towards stance position and tap "Record Back".
+        </p>
+
+        <div class="record-grid">
+          <div class="record-box" id="boxForward">
+            <div class="record-label">⬆️ FORWARD MOTION VECTOR</div>
+            <div class="record-val" id="valForward">Not Recorded</div>
+            <button class="btn-capture" id="btnRecordForward" onclick="recordDirectionVector('forward')">Record Forward Position</button>
+          </div>
+
+          <div class="record-box" id="boxBack">
+            <div class="record-label">⬇️ BACK MOTION VECTOR</div>
+            <div class="record-val" id="valBack">Not Recorded</div>
+            <button class="btn-capture" id="btnRecordBack" onclick="recordDirectionVector('back')">Record Back Position</button>
+          </div>
+        </div>
+
+        <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+          <button class="btn-capture" style="width: auto; padding: 10px 20px;" onclick="switchWizardStep(4)">Next: Step 4 (Calculate & Apply) →</button>
+        </div>
+      </div>
+
+      <!-- STEP 4: Calculate & Save Profile -->
+      <div id="stepView4" style="display: none;">
+        <h3 style="font-size: 18px; font-weight: 800; color: var(--text-main); margin-bottom: 6px;">
+          Step 4: Calibration Accuracy Profile Summary
+        </h3>
+        <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px;">
+          The system has computed your custom 90° orientation compensation matrix and directional scaling factors. Save this profile to apply high-precision tracking across all games and dashboard views.
+        </p>
+
+        <div style="background: #0f172a; border-radius: 14px; padding: 18px; margin-bottom: 16px; border: 1px solid var(--yellow-border);">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; text-align: center;">
+            <div>
+              <div style="font-size: 11px; font-weight: 700; color: #94a3b8;">90° VERTICAL OFFSET</div>
+              <div style="font-size: 20px; font-weight: 800; color: var(--yellow-primary);" id="summaryVerticalOffset">0.00°</div>
+            </div>
+            <div>
+              <div style="font-size: 11px; font-weight: 700; color: #94a3b8;">ROLL CORRECTION</div>
+              <div style="font-size: 20px; font-weight: 800; color: #38bdf8;" id="summaryRollCorr">0.00°</div>
+            </div>
+            <div>
+              <div style="font-size: 11px; font-weight: 700; color: #94a3b8;">PITCH CORRECTION</div>
+              <div style="font-size: 20px; font-weight: 800; color: #38bdf8;" id="summaryPitchCorr">0.00°</div>
+            </div>
+            <div>
+              <div style="font-size: 11px; font-weight: 700; color: #94a3b8;">PRECISION RATING</div>
+              <div style="font-size: 20px; font-weight: 800; color: #00e699;" id="summaryRating">99.8% (Ultra Precision)</div>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-capture" style="padding: 14px; font-size: 14px; background: #16a34a; color: #ffffff;" onclick="saveCalibrationProfile()">
+          💾 SAVE CALIBRATION & APPLY TO PHYSICS ENGINE
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Live 3D Calibrated Preview & Realtime Diagnostic Grid -->
+    <div class="section-title">🎮 Calibrated Live 3D Trajectory Test Canvas</div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px;">
+      
+      <!-- 3D Canvas -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Live 6-DOF Calibrated Bat</div>
+          <span class="badge-yellow" id="trainingBadge">Calibrated 90°</span>
+        </div>
+        <div id="bat3dContainer" style="width: 100%; height: 320px; border-radius: 12px; background: #090d16; overflow: hidden; position: relative; border: 1px solid var(--border-color);">
+          <div style="position: absolute; bottom: 10px; left: 14px; color: #94a3b8; font-size: 11px; font-weight: 700; pointer-events: none;">
+            Live Calibrated Motion Tracking
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Motion Metrics -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">⚡ Motion Vector Telemetry</div>
+          <span class="badge-yellow">Realtime</span>
+        </div>
+
+        <div class="telemetry-row">
+          <span class="telemetry-label">Calibrated Bat Pitch Angle</span>
+          <span class="telemetry-val" id="telemetryPitch" style="color: #eab308;">90.0° (Vertical)</span>
+        </div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">Detected Direction Movement</span>
+          <span class="telemetry-val" id="telemetryDirection" style="color: #00e699; font-weight: 800;">Neutral / Center</span>
+        </div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">Bat Face Roll Orientation</span>
+          <span class="telemetry-val" id="telemetryRoll">0.0° (Square Face)</span>
+        </div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">Accelerometer X / Y / Z</span>
+          <span class="telemetry-val" id="telemetryAccel">X: 0.00  Y: 1.00  Z: 0.00</span>
+        </div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">Gyroscope X / Y / Z</span>
+          <span class="telemetry-val" id="telemetryGyro">X: 0.00  Y: 0.00  Z: 0.00</span>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div><strong>CricSense Telemetry System</strong> • Gesture Training & Calibration Engine</div>
+    <div>Server Port: <strong>8080</strong></div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="/js/bat3d.js"></script>
+  <script src="/js/training.js"></script>
+</body>
+</html>
