@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CricSense 3D Cricket Game Arena</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body class="game-page-body">
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-game">
+    <div class="navbar-container">
+      <div class="brand">
+        <div class="brand-icon">🏏</div>
+        <div>
+          <div class="brand-title">CricSense 3D Cricket Arena</div>
+          <div class="brand-subtitle">Real-Time Motion Sensor Controlled Match Engine</div>
+        </div>
+      </div>
+      
+      <div class="nav-menu">
+        <a href="/" class="nav-link">📊 Receiver Dashboard</a>
+        <a href="/training.html" class="nav-link">🎯 Training & 90° Calibration</a>
+        <a href="/game.html" class="nav-link active">🎮 3D Cricket Game</a>
+      </div>
+
+      <div class="nav-status">
+        <div class="status-dot connected"></div>
+        <span id="gameConnStatus">Live Sensor Link Active</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Fullscreen 3D Stadium Arena Container -->
+  <div class="game-arena-wrapper">
+    <div id="game3dCanvasContainer" class="game-3d-canvas">
+      
+      <!-- Directional Pitch Markers -->
+      <div class="dir-indicator-front">⬆️ FRONT (BOWLER END)</div>
+
+      <!-- Top Left: Scorecard HUD -->
+      <div class="game-hud-score-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+          <span style="font-size: 10px; font-weight: 800; color: var(--yellow-primary); letter-spacing: 1px;">MATCH SCORECARD</span>
+          <span class="badge-yellow" id="matchFormatBadge">1-Over Match</span>
+        </div>
+        <div style="font-size: 26px; font-weight: 900; color: #ffffff;" id="hudMatchScore">
+          SCORE: <span style="color: #00e699;">0/0</span> <span style="font-size: 14px; color: #94a3b8;">(0.0 Overs)</span>
+        </div>
+
+        <!-- 6-Ball Timeline Pills -->
+        <div class="hud-ball-pills" style="margin-top: 8px;">
+          <span class="ball-pill" id="bPill1">1</span>
+          <span class="ball-pill" id="bPill2">2</span>
+          <span class="ball-pill" id="bPill3">3</span>
+          <span class="ball-pill" id="bPill4">4</span>
+          <span class="ball-pill" id="bPill5">5</span>
+          <span class="ball-pill" id="bPill6">6</span>
+        </div>
+      </div>
+
+      <!-- Top Right: Stadium Control Panel -->
+      <div class="game-controls-overlay">
+        <!-- Bowling Style Selector -->
+        <div class="control-group">
+          <label class="control-label">BOWLING STYLE</label>
+          <div class="btn-toggle-group">
+            <button class="btn-toggle active" onclick="setBowlingStyle('medium')">🎯 Medium</button>
+            <button class="btn-toggle" onclick="setBowlingStyle('fast')">⚡ Fast Pace</button>
+            <button class="btn-toggle" onclick="setBowlingStyle('offspin')">🔄 Off-Spin</button>
+            <button class="btn-toggle" onclick="setBowlingStyle('legspin')">🌀 Leg-Spin</button>
+          </div>
+        </div>
+
+        <!-- Camera Angle Selector -->
+        <div class="control-group">
+          <label class="control-label">CAMERA ANGLE</label>
+          <div class="btn-toggle-group">
+            <button class="btn-toggle active" onclick="setCameraMode('broadcast')">🎥 Broadcast</button>
+            <button class="btn-toggle" onclick="setCameraMode('batsmanEye')">👤 Batsman Cam</button>
+            <button class="btn-toggle" onclick="setCameraMode('bowlerCam')">🎳 Bowler Cam</button>
+          </div>
+        </div>
+
+        <button onclick="calibrateBatOrientation()" class="btn-game-action">
+          🎯 Neutralize Bat Orientation
+        </button>
+      </div>
+
+      <!-- Swing Timing Announcement Badge -->
+      <div class="timing-badge" id="swingTimingBadge">
+        PERFECT ⚡
+      </div>
+
+      <!-- Announcer Big Result Banner -->
+      <div class="match-announcer-banner" id="matchAnnouncerBanner">
+        <span id="matchAnnouncerText">SIX! 💥 92 m</span>
+      </div>
+
+      <!-- Bottom Right: Bowl Ball Action Button -->
+      <button class="btn-bowl-ball-main" onclick="bowlNextBall()">
+        🎾 BOWL NEXT BALL
+      </button>
+
+      <div id="impactGlow" style="position: absolute; inset: 0; pointer-events: none; border: 6px solid #ef4444; opacity: 0; transition: opacity 0.15s ease;"></div>
+    </div>
+  </div>
+
+  <!-- Post-Match Summary Trophy Modal -->
+  <div class="modal-backdrop" id="matchSummaryModal" style="display: none;">
+    <div class="modal-card" style="max-width: 500px; background: #0f172a; border-color: var(--yellow-primary); color: #f8fafc;">
+      <div style="font-size: 54px; margin-bottom: 8px; animation: bounce 0.6s infinite alternate;">🏆</div>
+      <h2 style="font-size: 24px; font-weight: 900; color: var(--yellow-primary); margin-bottom: 4px;">1-OVER MATCH COMPLETE!</h2>
+      <p style="font-size: 13px; color: #94a3b8; margin-bottom: 20px;">Here is your performance breakdown for the 6-ball innings:</p>
+
+      <div style="background: #1e293b; border-radius: 16px; padding: 22px; border: 1px solid #334155; margin-bottom: 20px; text-align: center;">
+        <div style="font-size: 11px; font-weight: 800; color: #94a3b8; letter-spacing: 1px;">FINAL MATCH SCORE</div>
+        <div style="font-size: 48px; font-weight: 900; color: #00e699; margin: 4px 0;" id="sumTotalScore">18 / 0</div>
+        <div style="font-size: 13px; color: #cbd5e1;" id="sumOverBreakdown">Overs: 1.0 (6 Balls) | Strike Rate: 300.0</div>
+      </div>
+
+      <div style="display: flex; justify-content: space-around; background: #0a0d14; padding: 14px; border-radius: 12px; margin-bottom: 24px; font-size: 13px;">
+        <div>Max Speed: <strong id="sumMaxSpeed" style="color: var(--yellow-primary);">0.0 km/h</strong></div>
+        <div>Boundary 6s: <strong id="sumSixes" style="color: #00e699;">0</strong></div>
+        <div>Boundary 4s: <strong id="sumFours" style="color: #38bdf8;">0</strong></div>
+      </div>
+
+      <div style="display: flex; gap: 12px;">
+        <button onclick="restartOneOverMatch()" style="flex: 1; background: var(--yellow-primary); color: #0f172a; border: none; border-radius: 12px; padding: 14px; font-weight: 900; cursor: pointer; font-size: 14px;">
+          🔄 PLAY ANOTHER OVER
+        </button>
+        <button onclick="closeMatchSummaryModal()" style="flex: 1; background: #1e293b; color: #ffffff; border: 1px solid #334155; border-radius: 12px; padding: 14px; font-weight: 800; cursor: pointer; font-size: 14px;">
+          ✕ CLOSE
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio Synthesizer & 3D Game Scripts -->
+  <script src="/js/audioEngine.js"></script>
+  <script src="/js/game3d.js"></script>
+</body>
+</html>
