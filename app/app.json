@@ -15,7 +15,8 @@
       "adaptiveIcon": {
         "backgroundColor": "#1e1e2e"
       },
-      "package": "com.tejaspatil_010.app"
+      "package": "com.tejaspatil_010.app",
+      "usesCleartextTraffic": true
     },
     "web": {
       "bundler": "metro"
