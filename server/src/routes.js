@@ -140,15 +140,20 @@ function handleHttpRequest(req, res, publicDir, port) {
   }
 
   // Serve static files from public/
-  let filePath = path.join(publicDir, req.url === '/' ? 'index.html' : req.url);
-  const extname = path.extname(filePath);
+  const parsedUrl = new URL(req.url, 'http://localhost');
+  let reqPath = decodeURIComponent(parsedUrl.pathname);
+  if (reqPath === '/') reqPath = '/index.html';
+
+  const filePath = path.join(publicDir, reqPath);
+  const extname = path.extname(filePath).toLowerCase();
   let contentType = 'text/html';
 
   if (extname === '.js') contentType = 'text/javascript';
   else if (extname === '.css') contentType = 'text/css';
   else if (extname === '.json') contentType = 'application/json';
   else if (extname === '.png') contentType = 'image/png';
-  else if (extname === '.jpg') contentType = 'image/jpg';
+  else if (extname === '.jpg' || extname === '.jpeg') contentType = 'image/jpeg';
+  else if (extname === '.ico') contentType = 'image/x-icon';
 
   fs.readFile(filePath, (err, content) => {
     if (err) {
