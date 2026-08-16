@@ -1,7 +1,9 @@
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 
-export function Header({ onAccountPress }) {
+export function Header({ onAccountPress, connectionState = 'disconnected' }) {
+  const isConnected = connectionState === 'connected';
+
   return (
     <View style={styles.header}>
       <View style={styles.leftContainer}>
@@ -10,9 +12,11 @@ export function Header({ onAccountPress }) {
       </View>
 
       <View style={styles.rightContainer}>
-        <View style={styles.connectionBadge}>
-          <View style={styles.statusDot} />
-          <Text style={styles.connectionText}>PC Connected</Text>
+        <View style={[styles.connectionBadge, !isConnected && styles.disconnectedBadge]}>
+          <View style={[styles.statusDot, !isConnected && styles.yellowDot]} />
+          <Text style={[styles.connectionText, !isConnected && styles.yellowText]}>
+            {isConnected ? 'PC Connected' : 'Not Connected'}
+          </Text>
         </View>
 
         <TouchableOpacity style={styles.accountButton} onPress={onAccountPress} activeOpacity={0.7}>
@@ -67,16 +71,26 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 5,
   },
+  disconnectedBadge: {
+    backgroundColor: '#3b2d13',
+    borderColor: '#eab308',
+  },
   statusDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
     backgroundColor: '#00e699',
   },
+  yellowDot: {
+    backgroundColor: '#eab308',
+  },
   connectionText: {
     color: '#00e699',
     fontSize: 10,
     fontWeight: '700',
+  },
+  yellowText: {
+    color: '#eab308',
   },
   accountButton: {
     padding: 2,

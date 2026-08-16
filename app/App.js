@@ -32,7 +32,7 @@ export default function App() {
       <StatusBar style="light" />
 
       {/* Top Header with Account Icon */}
-      <Header onAccountPress={handleAccountPress} />
+      <Header onAccountPress={handleAccountPress} connectionState={sensorData.connectionState} />
 
       {/* Main Content Area */}
       <View style={styles.content}>

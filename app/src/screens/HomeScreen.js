@@ -62,18 +62,43 @@ export function HomeScreen({
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      {/* Brand Logo & Web Connection Status Section */}
+      <View style={styles.logoContainer}>
+        <View style={styles.logoBadge}>
+          <Text style={styles.logoIcon}>🏏</Text>
+        </View>
+        <Text style={styles.logoTitle}>CricSense Bat Controller</Text>
+
+        {/* Status indicator directly under logo: GREEN if connected, YELLOW if not */}
+        <View style={[
+          styles.webStatusBadge,
+          connectionState === 'connected' ? styles.webStatusConnected : styles.webStatusYellow
+        ]}>
+          <View style={[
+            styles.statusDotSmall,
+            connectionState === 'connected' ? styles.dotGreen : styles.dotYellow
+          ]} />
+          <Text style={[
+            styles.webStatusText,
+            connectionState === 'connected' ? styles.textGreen : styles.textYellow
+          ]}>
+            {connectionState === 'connected' ? 'Connected to Web' : 'Not Connected to Web'}
+          </Text>
+        </View>
+      </View>
+
       {/* Title Section */}
       <View style={styles.headerSection}>
         <Text style={styles.badgeText}>CONNECTION HUB</Text>
         <Text style={styles.mainTitle}>Select Connection Method</Text>
         <Text style={styles.subTitle}>
-          Choose how to connect your bat sensor controller to your laptop game server
+          hoose how to connect your bat sensor controller to your laptop game server
         </Text>
       </View>
 
       {/* Connection Methods Container */}
       <View style={styles.methodsList}>
-        
+
         {/* Method 1: USB Connection */}
         <TouchableOpacity
           style={[
@@ -380,6 +405,75 @@ const styles = StyleSheet.create({
   connectButtonTextActive: {
     color: '#0f172a',
     fontWeight: '800',
+  },
+  logoContainer: {
+    alignItems: 'center',
+    backgroundColor: '#111827',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#1f2937',
+    marginBottom: 6,
+  },
+  logoBadge: {
+    width: 60,
+    height: 60,
+    borderRadius: 18,
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#38bdf8',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  logoIcon: {
+    fontSize: 30,
+  },
+  logoTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#f8fafc',
+    letterSpacing: 0.5,
+    marginBottom: 10,
+  },
+  webStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 8,
+    borderWidth: 1,
+  },
+  webStatusConnected: {
+    backgroundColor: '#132e27',
+    borderColor: '#00e699',
+  },
+  webStatusYellow: {
+    backgroundColor: '#3b2d13',
+    borderColor: '#eab308',
+  },
+  statusDotSmall: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  dotGreen: {
+    backgroundColor: '#00e699',
+  },
+  dotYellow: {
+    backgroundColor: '#eab308',
+  },
+  webStatusText: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  textGreen: {
+    color: '#00e699',
+  },
+  textYellow: {
+    color: '#eab308',
   },
 });
 
