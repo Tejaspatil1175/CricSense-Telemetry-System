@@ -42,6 +42,9 @@ export default function App() {
             onNavigateToSettings={() => setActiveTab('settings')}
             selectedMethod={connectionMethod}
             onSelectMethod={setConnectionMethod}
+            connectionState={sensorData.connectionState}
+            connectToServer={sensorData.connectToServer}
+            disconnectFromServer={sensorData.disconnectFromServer}
           />
         )}
 

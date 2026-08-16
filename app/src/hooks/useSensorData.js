@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Accelerometer, Gyroscope, Magnetometer, DeviceMotion } from 'expo-sensors';
 
 export function useSensorData(samplingInterval = 50, serverIp = '192.168.1.100', serverPort = '8080') {
@@ -6,6 +6,9 @@ export function useSensorData(samplingInterval = 50, serverIp = '192.168.1.100',
   const [gyroData, setGyroData] = useState({ x: 0, y: 0, z: 0, timestamp: 0, deviceTimestamp: 0 });
   const [magData, setMagData] = useState({ x: 0, y: 0, z: 0, heading: 0, timestamp: 0, deviceTimestamp: 0 });
   const [motionData, setMotionData] = useState({ alpha: 0, beta: 0, gamma: 0, orientation: 0, timestamp: 0, deviceTimestamp: 0 });
+
+  const [connectionState, setConnectionState] = useState('disconnected'); // 'disconnected' | 'connecting' | 'connected' | 'error'
+  const [activeMethod, setActiveMethod] = useState('wifi');
 
   const [status, setStatus] = useState({
     accel: 'Checking...',
@@ -15,19 +18,58 @@ export function useSensorData(samplingInterval = 50, serverIp = '192.168.1.100',
     stream: 'Disconnected',
   });
 
-  const latestRef = useRef({ accelData, gyroData, magData, motionData });
+  const latestRef = useRef({ accelData, gyroData, magData, motionData, activeMethod });
   useEffect(() => {
-    latestRef.current = { accelData, gyroData, magData, motionData };
-  }, [accelData, gyroData, magData, motionData]);
+    latestRef.current = { accelData, gyroData, magData, motionData, activeMethod };
+  }, [accelData, gyroData, magData, motionData, activeMethod]);
 
-  // Stream data to laptop server over HTTP POST
-  useEffect(() => {
+  const disconnectFromServer = useCallback(async () => {
+    setConnectionState('disconnected');
+    setStatus(prev => ({ ...prev, stream: 'Disconnected' }));
+    if (serverIp) {
+      try {
+        await fetch(`http://${serverIp}:${serverPort}/disconnect`, { method: 'POST' });
+      } catch (e) {}
+    }
+  }, [serverIp, serverPort]);
+
+  const connectToServer = useCallback(async (method = 'wifi') => {
     if (!serverIp) return;
+    setActiveMethod(method);
+    setConnectionState('connecting');
+    setStatus(prev => ({ ...prev, stream: `Connecting via ${method.toUpperCase()}...` }));
+
+    try {
+      const connectEndpoint = `http://${serverIp}:${serverPort}/connect`;
+      const res = await fetch(connectEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ method, timestamp: Date.now() }),
+      });
+
+      if (res.ok) {
+        setConnectionState('connecting');
+      } else {
+        setConnectionState('error');
+        setStatus(prev => ({ ...prev, stream: 'Server Connection Refused' }));
+      }
+    } catch (err) {
+      setConnectionState('error');
+      setStatus(prev => ({ ...prev, stream: 'Unable to Reach Server (Check IP)' }));
+    }
+  }, [serverIp, serverPort]);
+
+  // Stream data to laptop server over HTTP POST only when connecting or connected
+  useEffect(() => {
+    if (!serverIp || (connectionState !== 'connecting' && connectionState !== 'connected')) {
+      return;
+    }
 
     const endpoint = `http://${serverIp}:${serverPort}/telemetry`;
     const transmitTimer = setInterval(async () => {
-      const { accelData, gyroData, magData, motionData } = latestRef.current;
+      const { accelData, gyroData, magData, motionData, activeMethod } = latestRef.current;
       const payload = {
+        method: activeMethod,
         accel: accelData,
         gyro: gyroData,
         motion: motionData,
@@ -43,17 +85,19 @@ export function useSensorData(samplingInterval = 50, serverIp = '192.168.1.100',
         });
 
         if (response.ok) {
+          setConnectionState('connected');
           setStatus(prev => ({ ...prev, stream: 'Connected & Streaming' }));
         } else {
           setStatus(prev => ({ ...prev, stream: 'Server Error' }));
         }
       } catch (err) {
-        setStatus(prev => ({ ...prev, stream: 'Disconnected (Check IP)' }));
+        setConnectionState('disconnected');
+        setStatus(prev => ({ ...prev, stream: 'Disconnected (Lost Connection)' }));
       }
     }, samplingInterval);
 
     return () => clearInterval(transmitTimer);
-  }, [serverIp, serverPort, samplingInterval]);
+  }, [serverIp, serverPort, samplingInterval, connectionState]);
 
   // Setup Sensor Listeners
   useEffect(() => {
@@ -158,5 +202,5 @@ export function useSensorData(samplingInterval = 50, serverIp = '192.168.1.100',
     };
   }, [samplingInterval]);
 
-  return { accelData, gyroData, magData, motionData, status };
+  return { accelData, gyroData, magData, motionData, status, connectionState, activeMethod, connectToServer, disconnectFromServer };
 }

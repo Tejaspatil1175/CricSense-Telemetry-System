@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CricSense - Laptop Telemetry Server</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-main: #fcfcf7;
+      --bg-card: #ffffff;
+      --bg-subtle: #fefce8;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --yellow-primary: #eab308;
+      --yellow-hover: #ca8a04;
+      --yellow-light: #fef9c3;
+      --yellow-border: #fde047;
+      --yellow-glow: rgba(234, 179, 8, 0.25);
+      --green-active: #16a34a;
+      --green-bg: #dcfce7;
+      --border-color: #f1f5f9;
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+      --shadow-md: 0 10px 25px -5px rgba(234, 179, 8, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-main);
+      background-image: 
+        radial-gradient(circle at 15% 15%, #fef08a 0%, transparent 25%),
+        radial-gradient(circle at 85% 75%, #fef9c3 0%, transparent 25%);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding-bottom: 40px;
+    }
+
+    /* Navbar */
+    .navbar {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(234, 179, 8, 0.2);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      padding: 16px 28px;
+    }
+
+    .navbar-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #fef08a, #eab308);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 4px 12px var(--yellow-glow);
+    }
+
+    .brand-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--text-main);
+      letter-spacing: -0.5px;
+    }
+
+    .brand-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .nav-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--yellow-light);
+      border: 1px solid var(--yellow-border);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #854d0e;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background-color: #94a3b8;
+      border-radius: 50%;
+      box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.3);
+    }
+
+    .status-dot.connecting {
+      background-color: var(--yellow-primary);
+      box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.4);
+      animation: pulse 1s infinite;
+    }
+
+    .status-dot.connected {
+      background-color: var(--green-active);
+      box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.4);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.15); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+
+    /* Main Container */
+    .container {
+      max-width: 1200px;
+      margin: 32px auto 0;
+      padding: 0 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    /* Hero Banner */
+    .hero-banner {
+      background: linear-gradient(135deg, #ffffff, #fffbeb);
+      border: 1px solid var(--yellow-border);
+      border-radius: 20px;
+      padding: 28px;
+      box-shadow: var(--shadow-md);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+
+    .hero-text h1 {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 6px;
+    }
+
+    .hero-text p {
+      font-size: 14px;
+      color: var(--text-muted);
+      max-width: 600px;
+      line-height: 1.5;
+    }
+
+    .method-pill-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .method-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .method-pill.active {
+      background: var(--yellow-primary);
+      color: #ffffff;
+      border-color: var(--yellow-hover);
+      box-shadow: 0 4px 10px var(--yellow-glow);
+    }
+
+    .ip-box {
+      background: #ffffff;
+      border: 1px solid var(--yellow-border);
+      border-radius: 14px;
+      padding: 16px 20px;
+      text-align: right;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .ip-label {
+      font-size: 11px;
+      font-weight: 800;
+      color: #a16207;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .ip-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    /* Section Title */
+    .section-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-title::before {
+      content: '';
+      width: 4px;
+      height: 20px;
+      background-color: var(--yellow-primary);
+      border-radius: 2px;
+    }
+
+    /* Grid layout */
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid rgba(234, 179, 8, 0.25);
+      border-radius: 16px;
+      padding: 22px;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge-yellow {
+      background: var(--yellow-light);
+      color: #854d0e;
+      border: 1px solid var(--yellow-border);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+
+    /* Telemetry Data Grid */
+    .telemetry-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px dashed var(--border-color);
+      font-size: 13px;
+    }
+
+    .telemetry-row:last-child {
+      border-bottom: none;
+    }
+
+    .telemetry-label {
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .telemetry-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    /* Connection Method Selection Section */
+    .methods-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+
+    .method-card {
+      background: #ffffff;
+      border: 2px solid var(--border-color);
+      border-radius: 16px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .method-card:hover {
+      border-color: var(--yellow-primary);
+      background: #fffef5;
+    }
+
+    .method-card.selected {
+      border-color: var(--yellow-primary);
+      background: linear-gradient(180deg, #ffffff, #fefce8);
+      box-shadow: 0 6px 16px var(--yellow-glow);
+    }
+
+    .method-icon {
+      font-size: 24px;
+      margin-bottom: 10px;
+    }
+
+    .method-heading {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 4px;
+    }
+
+    .method-subtitle {
+      font-size: 11px;
+      font-weight: 700;
+      color: #ca8a04;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .method-description {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .active-tag {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: var(--yellow-primary);
+      color: #ffffff;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+
+    /* Footer */
+    footer {
+      max-width: 1200px;
+      margin: 40px auto 0;
+      padding: 20px 24px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    footer strong {
+      color: var(--text-main);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="navbar-container">
+      <div class="brand">
+        <div class="brand-icon">🏏</div>
+        <div>
+          <div class="brand-title">CricSense Telemetry Server</div>
+          <div class="brand-subtitle">Laptop Motion Engine Receiver</div>
+        </div>
+      </div>
+      <div class="nav-status" id="navStatus">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">Waiting for Mobile Connection...</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Content Container -->
+  <div class="container">
+
+    <!-- Hero Banner -->
+    <div class="hero-banner">
+      <div class="hero-text">
+        <h1>Laptop Receiver Dashboard</h1>
+        <p>Receiving high-frequency 9-DOF motion sensor data from your mobile bat controller to calculate bat velocity, impact force, and swing dynamics in real-time.</p>
+        
+        <div class="method-pill-group">
+          <span class="method-pill" id="pillUsb" onclick="selectMethod('usb')">🔌 USB Tethering</span>
+          <span class="method-pill active" id="pillWifi" onclick="selectMethod('wifi')">📶 Wi-Fi Stream</span>
+          <span class="method-pill" id="pillBt" onclick="selectMethod('bt')">📡 Bluetooth BLE</span>
+        </div>
+      </div>
+
+      <div class="ip-box">
+        <div class="ip-label">Telemetry Endpoint</div>
+        <div class="ip-val" id="endpointVal">http://localhost:8080/telemetry</div>
+      </div>
+    </div>
+
+    <!-- Active Connection Methods -->
+    <div class="section-title">Select Connection Method</div>
+    <div class="methods-grid">
+      <div class="method-card" id="cardUsb" onclick="selectMethod('usb')">
+        <div class="method-icon">🔌</div>
+        <div class="method-subtitle">Method 1 • Low Latency</div>
+        <div class="method-heading">USB Cable Link</div>
+        <div class="method-description">Sub-2ms response speed using USB Debugging (ADB port forwarding 8080) or USB Tethering mode.</div>
+      </div>
+
+      <div class="method-card selected" id="cardWifi" onclick="selectMethod('wifi')">
+        <div class="active-tag" id="activeTagWifi">ACTIVE METHOD</div>
+        <div class="method-icon">📶</div>
+        <div class="method-subtitle">Method 2 • Wireless Network</div>
+        <div class="method-heading">Wi-Fi Telemetry Stream</div>
+        <div class="method-description">Connect smartphone and laptop to the same Wi-Fi router or mobile hotspot over HTTP POST / WebSocket.</div>
+      </div>
+
+      <div class="method-card" id="cardBt" onclick="selectMethod('bt')">
+        <div class="method-icon">📡</div>
+        <div class="method-subtitle">Method 3 • Bluetooth BLE</div>
+        <div class="method-heading">Bluetooth Direct Pair</div>
+        <div class="method-description">Direct point-to-point wireless connection via Bluetooth Low Energy without needing a Wi-Fi router.</div>
+      </div>
+    </div>
+
+    <!-- Real-Time Telemetry Monitor -->
+    <div class="section-title">Live Telemetry Metrics</div>
+    <div class="grid-3">
+      
+      <!-- Accelerometer -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🚀 Accelerometer</div>
+          <span class="badge-yellow">g-force</span>
+        </div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">X Axis</span>
+          <span class="telemetry-val" id="accelX">0.0000 g</span>
+        </div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">Y Axis</span>
+          <span class="telemetry-val" id="accelY">0.0000 g</span>
+        </div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">Z Axis</span>
+          <span class="telemetry-val" id="accelZ">0.0000 g</span>
+        </div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">Total Magnitude</span>
+          <span class="telemetry-val" id="accelTotal">0.00 g</span>
+        </div>
+      </div>
+
+      <!-- Gyroscope -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🔄 Gyroscope</div>
+          <span class="badge-yellow">rad/s</span>
+        </div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">Pitch (X)</span>
+          <span class="telemetry-val" id="gyroX">0.0000</span>
+        </div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">Roll (Y)</span>
+          <span class="telemetry-val" id="gyroY">0.0000</span>
+        </div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">Yaw (Z)</span>
+          <span class="telemetry-val" id="gyroZ">0.0000</span>
+        </div>
+      </div>
+
+      <!-- Magnetometer & Rotation -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🧭 Compass & Rotation</div>
+          <span class="badge-yellow">Orientation</span>
+        </div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">Alpha (Z-rot)</span>
+          <span class="telemetry-val" id="motionAlpha">0.0000 rad</span>
+        </div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">Beta (X-rot)</span>
+          <span class="telemetry-val" id="motionBeta">0.0000 rad</span>
+        </div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">Gamma (Y-rot)</span>
+          <span class="telemetry-val" id="motionGamma">0.0000 rad</span>
+        </div>
+        <div class="telemetry-row">
+          <span class="telemetry-label">Compass Heading</span>
+          <span class="telemetry-val" id="magHeading">0.0°</span>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div><strong>CricSense Telemetry System</strong> • Real-Time Cricket Bat Motion Engine</div>
+    <div>Server Port: <strong>8080</strong></div>
+  </footer>
+
+  <script>
+    let activeMethod = 'wifi';
+
+    function selectMethod(method) {
+      activeMethod = method;
+      const pills = ['Usb', 'Wifi', 'Bt'];
+      const cards = ['cardUsb', 'cardWifi', 'cardBt'];
+      
+      pills.forEach(p => {
+        document.getElementById('pill' + p).classList.remove('active');
+      });
+
+      cards.forEach(c => {
+        const el = document.getElementById(c);
+        el.classList.remove('selected');
+        const tag = el.querySelector('.active-tag');
+        if (tag) tag.remove();
+      });
+
+      if (method === 'usb') {
+        document.getElementById('pillUsb').classList.add('active');
+        const card = document.getElementById('cardUsb');
+        card.classList.add('selected');
+        card.insertAdjacentHTML('afterbegin', '<div class="active-tag">ACTIVE METHOD</div>');
+      } else if (method === 'wifi') {
+        document.getElementById('pillWifi').classList.add('active');
+        const card = document.getElementById('cardWifi');
+        card.classList.add('selected');
+        card.insertAdjacentHTML('afterbegin', '<div class="active-tag">ACTIVE METHOD</div>');
+      } else if (method === 'bt') {
+        document.getElementById('pillBt').classList.add('active');
+        const card = document.getElementById('cardBt');
+        card.classList.add('selected');
+        card.insertAdjacentHTML('afterbegin', '<div class="active-tag">ACTIVE METHOD</div>');
+      }
+    }
+
+    // Mobile Connection State UI Handler
+    function setConnectionUIState(state, method) {
+      const dot = document.getElementById('statusDot');
+      const text = document.getElementById('statusText');
+      const mName = method ? method.toUpperCase() : 'WIFI';
+
+      if (method) {
+        selectMethod(method.toLowerCase());
+      }
+
+      dot.classList.remove('connecting', 'connected');
+
+      if (state === 'connecting') {
+        dot.classList.add('connecting');
+        text.innerText = `Connecting via ${mName}...`;
+      } else if (state === 'connected') {
+        dot.classList.add('connected');
+        text.innerText = `Mobile Connected & Streaming (${mName})`;
+      } else {
+        text.innerText = 'Waiting for Mobile Connection...';
+      }
+    }
+
+    // WebSocket / Polling for live status
+    function connectTelemetryStream() {
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = wsProtocol + '//' + window.location.host;
+
+      try {
+        const socket = new WebSocket(wsUrl);
+
+        socket.onopen = () => {
+          // Socket connected to local server; server will broadcast mobile state
+        };
+
+        socket.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'connection_status') {
+              setConnectionUIState(data.state, data.method);
+            } else if (data.type === 'telemetry' || data.accel) {
+              setConnectionUIState('connected', data.method);
+              updateDashboard(data);
+            }
+          } catch (e) {}
+        };
+
+        socket.onclose = () => {
+          setConnectionUIState('idle');
+          setTimeout(connectTelemetryStream, 3000);
+        };
+      } catch (e) {
+        setInterval(pollStatus, 1000);
+      }
+    }
+
+    function pollStatus() {
+      fetch('/api/status')
+        .then(res => res.json())
+        .then(data => {
+          setConnectionUIState(data.mobileState || 'idle', data.selectedMethod);
+          if (data.latestPayload && data.mobileState === 'connected') {
+            updateDashboard(data.latestPayload);
+          }
+        })
+        .catch(() => {});
+    }
+
+    function updateDashboard(data) {
+      if (data.accel) {
+        document.getElementById('accelX').innerText = (data.accel.x || 0).toFixed(4) + ' g';
+        document.getElementById('accelY').innerText = (data.accel.y || 0).toFixed(4) + ' g';
+        document.getElementById('accelZ').innerText = (data.accel.z || 0).toFixed(4) + ' g';
+        const totalG = Math.sqrt((data.accel.x||0)**2 + (data.accel.y||0)**2 + (data.accel.z||0)**2);
+        document.getElementById('accelTotal').innerText = totalG.toFixed(2) + ' g';
+      }
+      if (data.gyro) {
+        document.getElementById('gyroX').innerText = (data.gyro.x || 0).toFixed(4);
+        document.getElementById('gyroY').innerText = (data.gyro.y || 0).toFixed(4);
+        document.getElementById('gyroZ').innerText = (data.gyro.z || 0).toFixed(4);
+      }
+      if (data.motion) {
+        document.getElementById('motionAlpha').innerText = (data.motion.alpha || 0).toFixed(4) + ' rad';
+        document.getElementById('motionBeta').innerText = (data.motion.beta || 0).toFixed(4) + ' rad';
+        document.getElementById('motionGamma').innerText = (data.motion.gamma || 0).toFixed(4) + ' rad';
+      }
+      if (data.mag) {
+        document.getElementById('magHeading').innerText = (data.mag.heading || 0).toFixed(1) + '°';
+      }
+    }
+
+    connectTelemetryStream();
+  </script>
+</body>
+</html>

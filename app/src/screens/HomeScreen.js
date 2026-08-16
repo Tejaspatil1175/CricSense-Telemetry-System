@@ -1,7 +1,15 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
 
-export function HomeScreen({ onNavigateToData, onNavigateToSettings, selectedMethod = 'wifi', onSelectMethod }) {
+export function HomeScreen({
+  onNavigateToData,
+  onNavigateToSettings,
+  selectedMethod = 'wifi',
+  onSelectMethod,
+  connectionState = 'disconnected',
+  connectToServer,
+  disconnectFromServer,
+}) {
   const [activeMethod, setActiveMethod] = useState(selectedMethod);
 
   const handleSelect = (methodKey) => {
@@ -11,15 +19,45 @@ export function HomeScreen({ onNavigateToData, onNavigateToSettings, selectedMet
     }
   };
 
-  const handleConnectAction = (methodName) => {
-    Alert.alert(
-      `${methodName} Selected`,
-      `Your Bat Controller is now set to stream telemetry via ${methodName}.`,
-      [
-        { text: 'View Live Data', onPress: onNavigateToData },
-        { text: 'OK', style: 'default' }
-      ]
-    );
+  const handleConnectToggle = (methodKey, methodName) => {
+    handleSelect(methodKey);
+
+    if (connectionState === 'connected' && activeMethod === methodKey) {
+      Alert.alert(
+        'Disconnect Bat Controller?',
+        `Stop streaming telemetry over ${methodName}?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Disconnect',
+            style: 'destructive',
+            onPress: () => {
+              disconnectFromServer && disconnectFromServer();
+            },
+          },
+        ]
+      );
+    } else {
+      if (connectToServer) {
+        connectToServer(methodKey);
+      }
+      Alert.alert(
+        `Connecting via ${methodName}`,
+        `Initiating stream to PC game server. Web dashboard will show 'Connecting...' then 'Connected'.`,
+        [
+          { text: 'View Live Data', onPress: onNavigateToData },
+          { text: 'OK', style: 'default' },
+        ]
+      );
+    }
+  };
+
+  const getButtonText = (methodKey, defaultLabel) => {
+    if (activeMethod === methodKey) {
+      if (connectionState === 'connecting') return 'Connecting to PC...';
+      if (connectionState === 'connected') return `${defaultLabel.replace('Connect', 'Connected')} (Tap to Disconnect)`;
+    }
+    return defaultLabel;
   };
 
   return (
@@ -54,8 +92,10 @@ export function HomeScreen({ onNavigateToData, onNavigateToSettings, selectedMet
               <Text style={styles.methodName}>USB Cable Connection</Text>
             </View>
             {activeMethod === 'usb' && (
-              <View style={styles.activeBadge}>
-                <Text style={styles.activeBadgeText}>ACTIVE</Text>
+              <View style={[styles.activeBadge, connectionState === 'connecting' && styles.connectingBadge]}>
+                <Text style={styles.activeBadgeText}>
+                  {connectionState === 'connecting' ? 'CONNECTING' : connectionState === 'connected' ? 'CONNECTED' : 'SELECTED'}
+                </Text>
               </View>
             )}
           </View>
@@ -80,14 +120,11 @@ export function HomeScreen({ onNavigateToData, onNavigateToSettings, selectedMet
           </View>
 
           <TouchableOpacity
-            style={[styles.connectButton, activeMethod === 'usb' && styles.connectButtonActive]}
-            onPress={() => {
-              handleSelect('usb');
-              handleConnectAction('USB Wired Link');
-            }}
+            style={[styles.connectButton, activeMethod === 'usb' && connectionState === 'connected' && styles.connectButtonActive]}
+            onPress={() => handleConnectToggle('usb', 'USB Wired Link')}
           >
-            <Text style={[styles.connectButtonText, activeMethod === 'usb' && styles.connectButtonTextActive]}>
-              {activeMethod === 'usb' ? 'Connected via USB' : 'Connect via USB'}
+            <Text style={[styles.connectButtonText, activeMethod === 'usb' && connectionState === 'connected' && styles.connectButtonTextActive]}>
+              {getButtonText('usb', 'Connect via USB')}
             </Text>
           </TouchableOpacity>
         </TouchableOpacity>
@@ -110,8 +147,10 @@ export function HomeScreen({ onNavigateToData, onNavigateToSettings, selectedMet
               <Text style={styles.methodName}>Wi-Fi Telemetry Stream</Text>
             </View>
             {activeMethod === 'wifi' && (
-              <View style={styles.activeBadge}>
-                <Text style={styles.activeBadgeText}>ACTIVE</Text>
+              <View style={[styles.activeBadge, connectionState === 'connecting' && styles.connectingBadge]}>
+                <Text style={styles.activeBadgeText}>
+                  {connectionState === 'connecting' ? 'CONNECTING' : connectionState === 'connected' ? 'CONNECTED' : 'SELECTED'}
+                </Text>
               </View>
             )}
           </View>
@@ -136,14 +175,11 @@ export function HomeScreen({ onNavigateToData, onNavigateToSettings, selectedMet
           </View>
 
           <TouchableOpacity
-            style={[styles.connectButton, activeMethod === 'wifi' && styles.connectButtonActive]}
-            onPress={() => {
-              handleSelect('wifi');
-              handleConnectAction('Wi-Fi Telemetry Stream');
-            }}
+            style={[styles.connectButton, activeMethod === 'wifi' && connectionState === 'connected' && styles.connectButtonActive]}
+            onPress={() => handleConnectToggle('wifi', 'Wi-Fi Telemetry Stream')}
           >
-            <Text style={[styles.connectButtonText, activeMethod === 'wifi' && styles.connectButtonTextActive]}>
-              {activeMethod === 'wifi' ? 'Connected via Wi-Fi' : 'Connect via Wi-Fi'}
+            <Text style={[styles.connectButtonText, activeMethod === 'wifi' && connectionState === 'connected' && styles.connectButtonTextActive]}>
+              {getButtonText('wifi', 'Connect via Wi-Fi')}
             </Text>
           </TouchableOpacity>
         </TouchableOpacity>
@@ -166,8 +202,10 @@ export function HomeScreen({ onNavigateToData, onNavigateToSettings, selectedMet
               <Text style={styles.methodName}>Bluetooth Pairing</Text>
             </View>
             {activeMethod === 'bluetooth' && (
-              <View style={styles.activeBadge}>
-                <Text style={styles.activeBadgeText}>ACTIVE</Text>
+              <View style={[styles.activeBadge, connectionState === 'connecting' && styles.connectingBadge]}>
+                <Text style={styles.activeBadgeText}>
+                  {connectionState === 'connecting' ? 'CONNECTING' : connectionState === 'connected' ? 'CONNECTED' : 'SELECTED'}
+                </Text>
               </View>
             )}
           </View>
@@ -192,14 +230,11 @@ export function HomeScreen({ onNavigateToData, onNavigateToSettings, selectedMet
           </View>
 
           <TouchableOpacity
-            style={[styles.connectButton, activeMethod === 'bluetooth' && styles.connectButtonActive]}
-            onPress={() => {
-              handleSelect('bluetooth');
-              handleConnectAction('Bluetooth Direct Pairing');
-            }}
+            style={[styles.connectButton, activeMethod === 'bluetooth' && connectionState === 'connected' && styles.connectButtonActive]}
+            onPress={() => handleConnectToggle('bluetooth', 'Bluetooth Direct Pairing')}
           >
-            <Text style={[styles.connectButtonText, activeMethod === 'bluetooth' && styles.connectButtonTextActive]}>
-              {activeMethod === 'bluetooth' ? 'Paired via Bluetooth' : 'Connect via Bluetooth'}
+            <Text style={[styles.connectButtonText, activeMethod === 'bluetooth' && connectionState === 'connected' && styles.connectButtonTextActive]}>
+              {getButtonText('bluetooth', 'Connect via Bluetooth')}
             </Text>
           </TouchableOpacity>
         </TouchableOpacity>
@@ -289,6 +324,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
+  },
+  connectingBadge: {
+    backgroundColor: '#3b2d13',
+    borderColor: '#eab308',
   },
   activeBadgeText: {
     color: '#00e699',
