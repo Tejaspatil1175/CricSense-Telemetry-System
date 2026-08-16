@@ -8,10 +8,11 @@ import { Footer } from './src/components/Footer';
 
 import { HomeScreen } from './src/screens/HomeScreen';
 import { DataScreen } from './src/screens/DataScreen';
+import { BatScreen } from './src/screens/BatScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('home'); // 'home' | 'data' | 'settings'
+  const [activeTab, setActiveTab] = useState('home'); // 'home' | 'bat' | 'data' | 'settings'
   const [samplingInterval, setSamplingInterval] = useState(50); // 50ms default (20Hz)
   const [serverIp, setServerIp] = useState('');
   const [serverPort, setServerPort] = useState('8080');
@@ -49,6 +50,8 @@ export default function App() {
             onChangeServerIp={setServerIp}
           />
         )}
+
+        {activeTab === 'bat' && <BatScreen sensorData={sensorData} />}
 
         {activeTab === 'data' && <DataScreen sensorData={sensorData} />}
 

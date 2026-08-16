@@ -16,7 +16,13 @@
         "backgroundColor": "#1e1e2e"
       },
       "package": "com.tejaspatil_010.app",
-      "usesCleartextTraffic": true
+      "usesCleartextTraffic": true,
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "ACCESS_WIFI_STATE",
+        "CAMERA"
+      ]
     },
     "web": {
       "bundler": "metro"

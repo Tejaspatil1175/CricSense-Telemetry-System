@@ -4,6 +4,7 @@ import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 export function Footer({ activeTab, onSelectTab }) {
   const tabs = [
     { id: 'home', label: 'Home' },
+    { id: 'bat', label: 'Bat 🏏' },
     { id: 'data', label: 'Data' },
     { id: 'settings', label: 'Settings' },
   ];

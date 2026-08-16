@@ -2,6 +2,53 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Alert } from 'react-native';
 import { Accelerometer, Gyroscope, Magnetometer, DeviceMotion } from 'expo-sensors';
 
+// --- Madgwick IMU sensor-fusion filter ---------------------------------
+// Fuses raw gyroscope (rad/s) + accelerometer (g) into a single rotation
+// quaternion [w, x, y, z]. Unlike the phone OS's alpha/beta/gamma Euler
+// angles, a quaternion has no gimbal-lock singularity: holding the phone
+// straight up (like a bat) is exactly the orientation where Euler angles
+// blow up, and exactly where a quaternion stays perfectly stable. This is
+// the standard public-domain Madgwick AHRS algorithm (gyro-driven
+// integration, accelerometer-driven gradient-descent correction).
+function madgwickUpdate(q, gx, gy, gz, ax, ay, az, dt, beta = 0.08) {
+  let [q0, q1, q2, q3] = q;
+
+  let norm = Math.sqrt(ax * ax + ay * ay + az * az);
+  if (norm === 0 || !isFinite(norm)) {
+    // No usable accelerometer reading this tick — fall back to pure
+    // gyro integration so orientation doesn't freeze or blow up.
+    const qDot0 = 0.5 * (-q1 * gx - q2 * gy - q3 * gz);
+    const qDot1 = 0.5 * (q0 * gx + q2 * gz - q3 * gy);
+    const qDot2 = 0.5 * (q0 * gy - q1 * gz + q3 * gx);
+    const qDot3 = 0.5 * (q0 * gz + q1 * gy - q2 * gx);
+    q0 += qDot0 * dt; q1 += qDot1 * dt; q2 += qDot2 * dt; q3 += qDot3 * dt;
+    norm = Math.sqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3) || 1;
+    return [q0 / norm, q1 / norm, q2 / norm, q3 / norm];
+  }
+  ax /= norm; ay /= norm; az /= norm;
+
+  const _2q0 = 2 * q0, _2q1 = 2 * q1, _2q2 = 2 * q2, _2q3 = 2 * q3;
+  const _4q0 = 4 * q0, _4q1 = 4 * q1, _4q2 = 4 * q2;
+  const _8q1 = 8 * q1, _8q2 = 8 * q2;
+  const q0q0 = q0 * q0, q1q1 = q1 * q1, q2q2 = q2 * q2, q3q3 = q3 * q3;
+
+  let s0 = _4q0 * q2q2 + _2q2 * ax + _4q0 * q1q1 - _2q1 * ay;
+  let s1 = _4q1 * q3q3 - _2q3 * ax + 4 * q0q0 * q1 - _2q0 * ay - _4q1 + _8q1 * q1q1 + _8q1 * q2q2 + _4q1 * az;
+  let s2 = 4 * q0q0 * q2 + _2q0 * ax + _4q2 * q3q3 - _2q3 * ay - _4q2 + _8q2 * q1q1 + _8q2 * q2q2 + _4q2 * az;
+  let s3 = 4 * q1q1 * q3 - _2q1 * ax + 4 * q2q2 * q3 - _2q2 * ay;
+  let normS = Math.sqrt(s0 * s0 + s1 * s1 + s2 * s2 + s3 * s3) || 1;
+  s0 /= normS; s1 /= normS; s2 /= normS; s3 /= normS;
+
+  const qDot0 = 0.5 * (-q1 * gx - q2 * gy - q3 * gz) - beta * s0;
+  const qDot1 = 0.5 * (q0 * gx + q2 * gz - q3 * gy) - beta * s1;
+  const qDot2 = 0.5 * (q0 * gy - q1 * gz + q3 * gx) - beta * s2;
+  const qDot3 = 0.5 * (q0 * gz + q1 * gy - q2 * gx) - beta * s3;
+
+  q0 += qDot0 * dt; q1 += qDot1 * dt; q2 += qDot2 * dt; q3 += qDot3 * dt;
+  norm = Math.sqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3) || 1;
+  return [q0 / norm, q1 / norm, q2 / norm, q3 / norm];
+}
+
 export function parseServerUrl(inputIpOrUrl, defaultPort = '8080') {
   if (!inputIpOrUrl) return { httpUrl: '', wsUrl: '', cleanHost: '' };
   
@@ -56,6 +103,7 @@ export function useSensorData(samplingInterval = 50, serverIp = '10.97.70.3', se
   const [gyroData, setGyroData] = useState({ x: 0, y: 0, z: 0, timestamp: 0, deviceTimestamp: 0 });
   const [magData, setMagData] = useState({ x: 0, y: 0, z: 0, heading: 0, timestamp: 0, deviceTimestamp: 0 });
   const [motionData, setMotionData] = useState({ alpha: 0, beta: 0, gamma: 0, orientation: 0, timestamp: 0, deviceTimestamp: 0 });
+  const [quatData, setQuatData] = useState({ w: 1, x: 0, y: 0, z: 0 });
 
   const [connectionState, setConnectionState] = useState('disconnected'); // 'disconnected' | 'connecting' | 'connected' | 'denied' | 'error'
   const [activeMethod, setActiveMethod] = useState('wifi');
@@ -71,10 +119,16 @@ export function useSensorData(samplingInterval = 50, serverIp = '10.97.70.3', se
 
   const socketRef = useRef(null);
   const activeHttpUrlRef = useRef('');
-  const latestRef = useRef({ accelData, gyroData, magData, motionData, activeMethod });
+  const latestRef = useRef({ accelData, gyroData, magData, motionData, quatData, activeMethod });
   useEffect(() => {
-    latestRef.current = { accelData, gyroData, magData, motionData, activeMethod };
-  }, [accelData, gyroData, magData, motionData, activeMethod]);
+    latestRef.current = { accelData, gyroData, magData, motionData, quatData, activeMethod };
+  }, [accelData, gyroData, magData, motionData, quatData, activeMethod]);
+
+  // Sensor-fusion working state (not React state — updated every gyro
+  // sample at full rate, independent of React's render cycle).
+  const fusionQuatRef = useRef([1, 0, 0, 0]);
+  const latestAccelRawRef = useRef({ x: 0, y: 0, z: 0 });
+  const lastFusionTimeRef = useRef(0);
 
   const disconnectFromServer = useCallback(() => {
     if (socketRef.current) {
@@ -230,13 +284,14 @@ export function useSensorData(samplingInterval = 50, serverIp = '10.97.70.3', se
     }
 
     const transmitTimer = setInterval(async () => {
-      const { accelData, gyroData, magData, motionData, activeMethod } = latestRef.current;
+      const { accelData, gyroData, magData, motionData, quatData, activeMethod } = latestRef.current;
       const payload = {
         type: 'sensor_data',
         method: activeMethod,
         accel: accelData,
         gyro: gyroData,
         motion: motionData,
+        quat: quatData,
         mag: magData,
         deviceTimestamp: Date.now(),
       };
@@ -285,10 +340,10 @@ export function useSensorData(samplingInterval = 50, serverIp = '10.97.70.3', se
         if (isAccelAvail) {
           Accelerometer.setUpdateInterval(samplingInterval);
           accelSub = Accelerometer.addListener(data => {
+            const x = data.x || 0, y = data.y || 0, z = data.z || 0;
+            latestAccelRawRef.current = { x, y, z };
             setAccelData({
-              x: data.x || 0,
-              y: data.y || 0,
-              z: data.z || 0,
+              x, y, z,
               timestamp: data.timestamp || 0,
               deviceTimestamp: Date.now(),
             });
@@ -305,12 +360,30 @@ export function useSensorData(samplingInterval = 50, serverIp = '10.97.70.3', se
         if (isGyroAvail) {
           Gyroscope.setUpdateInterval(samplingInterval);
           gyroSub = Gyroscope.addListener(data => {
+            const gx = data.x || 0;
+            const gy = data.y || 0;
+            const gz = data.z || 0;
+            const now = Date.now();
+            const dt = lastFusionTimeRef.current > 0 ? Math.min((now - lastFusionTimeRef.current) / 1000, 0.2) : (samplingInterval / 1000);
+            lastFusionTimeRef.current = now;
+
+            const accelRaw = latestAccelRawRef.current;
+            const updatedQuat = madgwickUpdate(
+              fusionQuatRef.current,
+              gx, gy, gz,
+              accelRaw.x, accelRaw.y, accelRaw.z,
+              dt,
+              0.08
+            );
+            fusionQuatRef.current = updatedQuat;
+            setQuatData({ w: updatedQuat[0], x: updatedQuat[1], y: updatedQuat[2], z: updatedQuat[3] });
+
             setGyroData({
-              x: data.x || 0,
-              y: data.y || 0,
-              z: data.z || 0,
+              x: gx,
+              y: gy,
+              z: gz,
               timestamp: data.timestamp || 0,
-              deviceTimestamp: Date.now(),
+              deviceTimestamp: now,
             });
           });
         }
@@ -376,5 +449,5 @@ export function useSensorData(samplingInterval = 50, serverIp = '10.97.70.3', se
     };
   }, [samplingInterval]);
 
-  return { accelData, gyroData, magData, motionData, status, connectionState, activeMethod, connectToServer, disconnectFromServer };
+  return { accelData, gyroData, magData, motionData, quatData, status, connectionState, activeMethod, connectToServer, disconnectFromServer };
 }
