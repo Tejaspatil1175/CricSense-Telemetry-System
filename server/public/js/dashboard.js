@@ -290,7 +290,133 @@ function saveQuickCalibrationProfile() {
     });
 }
 
+/* ========================================================================== */
+/* 1-OVER CRICKET MATCH HUD & GAME STATE MANAGER                             */
+/* ========================================================================== */
+
+let matchState = {
+  currentBall: 0,
+  totalRuns: 0,
+  totalWickets: 0,
+  sixesCount: 0,
+  foursCount: 0,
+  maxSwingSpeed: 0,
+  ballResults: [],
+};
+
+function triggerBowlBall() {
+  if (matchState.currentBall >= 6) {
+    showMatchSummaryReport();
+    return;
+  }
+  if (typeof bowl3DBall === 'function') {
+    bowl3DBall('medium');
+  }
+}
+
+function onMatchBallResult(data) {
+  if (matchState.currentBall >= 6) return;
+
+  matchState.currentBall++;
+  matchState.totalRuns += data.runs || 0;
+  if (data.isWicket) matchState.totalWickets++;
+
+  if (data.outcome === '6') matchState.sixesCount++;
+  if (data.outcome === '4') matchState.foursCount++;
+
+  const speedVal = parseFloat(data.speedKmh || 0);
+  if (speedVal > matchState.maxSwingSpeed) matchState.maxSwingSpeed = speedVal;
+
+  matchState.ballResults.push(data.outcome);
+
+  // Update HUD Scorecard
+  const hudScore = document.getElementById('hudMatchScore');
+  if (hudScore) {
+    hudScore.innerHTML = `SCORE: <span style="color: #00e699;">${matchState.totalRuns}/${matchState.totalWickets}</span> <span style="font-size: 12px; color: #94a3b8;">(0.${matchState.currentBall} Overs)</span>`;
+  }
+
+  // Update Ball Pills
+  const pill = document.getElementById(`bPill${matchState.currentBall}`);
+  if (pill) {
+    pill.innerText = data.outcome;
+    pill.classList.remove('active');
+    if (data.outcome === '6') pill.classList.add('six');
+    else if (data.outcome === '4') pill.classList.add('four');
+    else if (data.isWicket) pill.classList.add('wicket');
+    else pill.classList.add('active');
+  }
+
+  // Show Announcer Banner
+  showMatchAnnouncer(data.label || `${data.runs} Runs!`);
+
+  // Log shot to table
+  addShotToLog(data.label || 'Cricket Delivery', data.speedKmh || '0.0', 'Normal Face', 2.0);
+
+  // Check Over Completion (6 Balls)
+  if (matchState.currentBall >= 6) {
+    setTimeout(showMatchSummaryReport, 2000);
+  }
+}
+
+function showMatchAnnouncer(text) {
+  const banner = document.getElementById('matchAnnouncerBanner');
+  const txtEl = document.getElementById('matchAnnouncerText');
+  if (banner && txtEl) {
+    txtEl.innerText = text;
+    banner.classList.add('show');
+    setTimeout(() => { banner.classList.remove('show'); }, 2200);
+  }
+}
+
+function showMatchSummaryReport() {
+  const modal = document.getElementById('matchSummaryModal');
+  if (!modal) return;
+
+  document.getElementById('sumTotalScore').innerText = `${matchState.totalRuns} / ${matchState.totalWickets}`;
+  document.getElementById('sumOverBreakdown').innerText = `Overs: 1.0 (6 Balls) | Strike Rate: ${((matchState.totalRuns / 6) * 100).toFixed(1)}`;
+  document.getElementById('sumMaxSpeed').innerText = `${matchState.maxSwingSpeed.toFixed(1)} km/h`;
+  document.getElementById('sumSixes').innerText = matchState.sixesCount;
+  document.getElementById('sumFours').innerText = matchState.foursCount;
+
+  modal.style.display = 'flex';
+}
+
+function closeMatchSummaryModal() {
+  const modal = document.getElementById('matchSummaryModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function restartOneOverMatch() {
+  matchState = {
+    currentBall: 0,
+    totalRuns: 0,
+    totalWickets: 0,
+    sixesCount: 0,
+    foursCount: 0,
+    maxSwingSpeed: 0,
+    ballResults: [],
+  };
+
+  const hudScore = document.getElementById('hudMatchScore');
+  if (hudScore) {
+    hudScore.innerHTML = `SCORE: <span style="color: #00e699;">0/0</span> <span style="font-size: 12px; color: #94a3b8;">(0.0 Overs)</span>`;
+  }
+
+  for (let i = 1; i <= 6; i++) {
+    const pill = document.getElementById(`bPill${i}`);
+    if (pill) {
+      pill.innerText = i;
+      pill.className = 'ball-pill';
+    }
+  }
+
+  closeMatchSummaryModal();
+}
+
 function updateDashboard(data) {
+  if (data.physics) {
+    lastPhysicsData = data.physics;
+  }
   if (data.accel) {
     lastRawAccel = data.accel;
     document.getElementById('accelX').innerText = (data.accel.x || 0).toFixed(4) + ' g';

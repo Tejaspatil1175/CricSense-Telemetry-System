@@ -799,4 +799,154 @@ footer strong {
   100% { transform: translateY(-8px); }
 }
 
+/* 1-Over Match HUD & Announcer Banner Styles */
+.match-hud-overlay {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  padding: 10px 14px;
+  border-radius: 12px;
+  pointer-events: auto;
+}
+
+.hud-ball-pills {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.ball-pill {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #1e293b;
+  color: #64748b;
+  border: 1px solid #334155;
+  font-size: 10px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ball-pill.active {
+  border-color: var(--yellow-primary);
+  color: var(--yellow-primary);
+}
+
+.ball-pill.six {
+  background: #15803d;
+  color: #ffffff;
+  border-color: #22c55e;
+}
+
+.ball-pill.four {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #38bdf8;
+}
+
+.ball-pill.wicket {
+  background: #b91c1c;
+  color: #ffffff;
+  border-color: #ef4444;
+}
+
+.btn-bowl-ball {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+  transition: all 0.2s ease;
+}
+
+.btn-bowl-ball:hover {
+  transform: translateY(-2px);
+  background: #059669;
+}
+
+.match-announcer-banner {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.8);
+  background: rgba(15, 23, 42, 0.92);
+  border: 2px solid var(--yellow-primary);
+  color: var(--yellow-primary);
+  padding: 14px 28px;
+  border-radius: 16px;
+  font-size: 24px;
+  font-weight: 900;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  opacity: 0;
+  transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.match-announcer-banner.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* Fullscreen 3D View Container */
+#bat3dContainer.fullscreen-3d-active {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 99999 !important;
+  border-radius: 0 !important;
+  border: none !important;
+}
+
+/* Directional Front & Back Pitch Overlay Badges */
+.dir-indicator-front {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.85);
+  color: var(--yellow-primary);
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 900;
+  border: 1px solid var(--yellow-primary);
+  pointer-events: none;
+  z-index: 5;
+  letter-spacing: 0.5px;
+}
+
+.dir-indicator-back {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.85);
+  color: #00e699;
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 900;
+  border: 1px solid #00e699;
+  pointer-events: none;
+  z-index: 5;
+  letter-spacing: 0.5px;
+}
+
+
+
 
