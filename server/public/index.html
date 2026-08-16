@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     :root {
       --bg-main: #fcfcf7;
@@ -396,6 +397,102 @@
     footer strong {
       color: var(--text-main);
     }
+
+    /* Modal Backdrop */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-card {
+      background: #ffffff;
+      border: 2px solid var(--yellow-primary);
+      border-radius: 20px;
+      padding: 32px;
+      max-width: 440px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+      animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0.8); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .modal-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+
+    .modal-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 8px;
+    }
+
+    .modal-desc {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn-accept {
+      flex: 1;
+      background: #16a34a;
+      color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
+      transition: transform 0.15s ease;
+    }
+
+    .btn-accept:hover {
+      transform: translateY(-2px);
+      background: #15803d;
+    }
+
+    .btn-deny {
+      flex: 1;
+      background: #ef4444;
+      color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+      transition: transform 0.15s ease;
+    }
+
+    .btn-deny:hover {
+      transform: translateY(-2px);
+      background: #dc2626;
+    }
   </style>
 </head>
 <body>
@@ -434,8 +531,10 @@
       </div>
 
       <div class="ip-box">
+        <div class="ip-label">Scan to Pair (QR Code)</div>
+        <div id="qrcodeBox" style="margin: 8px 0; display: flex; justify-content: center; background: #ffffff; padding: 10px; border-radius: 10px; border: 1px solid var(--yellow-border);"></div>
         <div class="ip-label">Telemetry Endpoint</div>
-        <div class="ip-val" id="endpointVal">http://localhost:8080/telemetry</div>
+        <div class="ip-val" id="endpointVal">http://localhost:8080</div>
       </div>
     </div>
 
@@ -541,6 +640,25 @@
 
   </div>
 
+  <!-- Incoming Connection Approval Modal -->
+  <div class="modal-backdrop" id="approvalModal" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-icon">📱</div>
+      <div class="modal-title">Incoming Mobile Controller</div>
+      <div class="modal-desc">
+        Device <strong id="modalDeviceName">Mobile Bat Controller</strong> wants to connect and stream real-time telemetry over <span id="modalMethod">WI-FI</span>.
+      </div>
+      <div class="modal-actions">
+        <button class="btn-accept" onclick="respondConnection(true)">
+          ✓ ACCEPT CONNECTION
+        </button>
+        <button class="btn-deny" onclick="respondConnection(false)">
+          ✕ DENY
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Footer -->
   <footer>
     <div><strong>CricSense Telemetry System</strong> • Real-Time Cricket Bat Motion Engine</div>
@@ -549,6 +667,7 @@
 
   <script>
     let activeMethod = 'wifi';
+    let webSocketClient = null;
 
     function selectMethod(method) {
       activeMethod = method;
@@ -596,14 +715,40 @@
 
       dot.classList.remove('connecting', 'connected');
 
-      if (state === 'connecting') {
+      if (state === 'pending_approval' || state === 'connecting') {
         dot.classList.add('connecting');
         text.innerText = `Connecting via ${mName}...`;
       } else if (state === 'connected') {
         dot.classList.add('connected');
         text.innerText = `Mobile Connected & Streaming (${mName})`;
+      } else if (state === 'denied') {
+        text.innerText = 'Connection Denied by PC User';
       } else {
         text.innerText = 'Waiting for Mobile Connection...';
+      }
+    }
+
+    function showApprovalModal(deviceName, method) {
+      document.getElementById('modalDeviceName').innerText = deviceName || 'Mobile Bat Controller';
+      document.getElementById('modalMethod').innerText = (method || 'wifi').toUpperCase();
+      document.getElementById('approvalModal').style.display = 'flex';
+      setConnectionUIState('pending_approval', method);
+    }
+
+    function hideApprovalModal() {
+      document.getElementById('approvalModal').style.display = 'none';
+    }
+
+    function respondConnection(isAccept) {
+      if (webSocketClient && webSocketClient.readyState === WebSocket.OPEN) {
+        webSocketClient.send(JSON.stringify({
+          type: 'respond_connect',
+          action: isAccept ? 'accept' : 'deny'
+        }));
+      }
+      hideApprovalModal();
+      if (!isAccept) {
+        setConnectionUIState('idle');
       }
     }
 
@@ -613,25 +758,32 @@
       const wsUrl = wsProtocol + '//' + window.location.host;
 
       try {
-        const socket = new WebSocket(wsUrl);
+        webSocketClient = new WebSocket(wsUrl);
 
-        socket.onopen = () => {
-          // Socket connected to local server; server will broadcast mobile state
+        webSocketClient.onopen = () => {
+          webSocketClient.send(JSON.stringify({ type: 'web_dashboard_register' }));
         };
 
-        socket.onmessage = (event) => {
+        webSocketClient.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-            if (data.type === 'connection_status') {
+
+            if (data.type === 'incoming_connection_request') {
+              showApprovalModal(data.deviceName, data.method);
+            } else if (data.type === 'connection_status') {
+              if (data.state !== 'pending_approval') {
+                hideApprovalModal();
+              }
               setConnectionUIState(data.state, data.method);
             } else if (data.type === 'telemetry' || data.accel) {
+              hideApprovalModal();
               setConnectionUIState('connected', data.method);
               updateDashboard(data);
             }
           } catch (e) {}
         };
 
-        socket.onclose = () => {
+        webSocketClient.onclose = () => {
           setConnectionUIState('idle');
           setTimeout(connectTelemetryStream, 3000);
         };
@@ -640,10 +792,34 @@
       }
     }
 
+    let lastQrUrl = '';
+    function renderQRCode(url) {
+      if (url === lastQrUrl) return;
+      lastQrUrl = url;
+      const container = document.getElementById('qrcodeBox');
+      if (!container) return;
+      container.innerHTML = '';
+      if (window.QRCode) {
+        new QRCode(container, {
+          text: url,
+          width: 120,
+          height: 120,
+          colorDark: '#0f172a',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      }
+    }
+
     function pollStatus() {
       fetch('/api/status')
         .then(res => res.json())
         .then(data => {
+          const activeUrl = data.cloudTunnelUrl || (data.localIps && data.localIps.length > 0 ? `http://${data.localIps[0]}:8080` : '');
+          if (activeUrl) {
+            document.getElementById('endpointVal').innerText = activeUrl;
+            renderQRCode(activeUrl);
+          }
           setConnectionUIState(data.mobileState || 'idle', data.selectedMethod);
           if (data.latestPayload && data.mobileState === 'connected') {
             updateDashboard(data.latestPayload);
@@ -675,6 +851,7 @@
       }
     }
 
+    pollStatus();
     connectTelemetryStream();
   </script>
 </body>

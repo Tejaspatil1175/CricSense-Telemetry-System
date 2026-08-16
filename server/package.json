@@ -4,9 +4,11 @@
   "description": "CricSense Telemetry PC/Laptop Terminal Receiver Server",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "node server.js"
   },
   "dependencies": {
+    "localtunnel": "^2.0.2",
     "ws": "^8.18.0"
   }
 }

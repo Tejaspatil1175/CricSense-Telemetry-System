@@ -1,14 +1,45 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { Alert } from 'react-native';
 import { Accelerometer, Gyroscope, Magnetometer, DeviceMotion } from 'expo-sensors';
 
-export function useSensorData(samplingInterval = 50, serverIp = '192.168.1.100', serverPort = '8080') {
+export function parseServerUrl(inputIpOrUrl, defaultPort = '8080') {
+  if (!inputIpOrUrl) return { httpUrl: '', wsUrl: '', cleanHost: '' };
+  
+  let raw = String(inputIpOrUrl).trim();
+  if (!raw) return { httpUrl: '', wsUrl: '', cleanHost: '' };
+
+  // Strip duplicate/nested protocols (e.g. http://http:// or ws://http://)
+  raw = raw.replace(/^(https?:\/\/|wss?:\/\/)+/gi, '');
+
+  // Strip path suffix (/telemetry, /connect, / or trailing slashes)
+  raw = raw.replace(/\/.*$/, '');
+
+  // Extract clean host and port
+  let host = raw;
+  let port = defaultPort;
+
+  if (raw.includes(':')) {
+    const parts = raw.split(':').filter(Boolean);
+    host = parts[0];
+    port = parts[1] || defaultPort;
+  }
+
+  const cleanHost = `${host}:${port}`;
+  const httpUrl = `http://${cleanHost}`;
+  const wsUrl = `ws://${cleanHost}`;
+
+  return { httpUrl, wsUrl, cleanHost };
+}
+
+export function useSensorData(samplingInterval = 50, serverIp = '10.97.70.3', serverPort = '8080') {
   const [accelData, setAccelData] = useState({ x: 0, y: 0, z: 0, timestamp: 0, deviceTimestamp: 0 });
   const [gyroData, setGyroData] = useState({ x: 0, y: 0, z: 0, timestamp: 0, deviceTimestamp: 0 });
   const [magData, setMagData] = useState({ x: 0, y: 0, z: 0, heading: 0, timestamp: 0, deviceTimestamp: 0 });
   const [motionData, setMotionData] = useState({ alpha: 0, beta: 0, gamma: 0, orientation: 0, timestamp: 0, deviceTimestamp: 0 });
 
-  const [connectionState, setConnectionState] = useState('disconnected'); // 'disconnected' | 'connecting' | 'connected' | 'error'
+  const [connectionState, setConnectionState] = useState('disconnected'); // 'disconnected' | 'connecting' | 'connected' | 'denied' | 'error'
   const [activeMethod, setActiveMethod] = useState('wifi');
+  const [activeProtocol, setActiveProtocol] = useState('ws'); // 'ws' | 'http'
 
   const [status, setStatus] = useState({
     accel: 'Checking...',
@@ -18,57 +49,166 @@ export function useSensorData(samplingInterval = 50, serverIp = '192.168.1.100',
     stream: 'Disconnected',
   });
 
+  const socketRef = useRef(null);
+  const activeHttpUrlRef = useRef('');
   const latestRef = useRef({ accelData, gyroData, magData, motionData, activeMethod });
   useEffect(() => {
     latestRef.current = { accelData, gyroData, magData, motionData, activeMethod };
   }, [accelData, gyroData, magData, motionData, activeMethod]);
 
-  const disconnectFromServer = useCallback(async () => {
+  const disconnectFromServer = useCallback(() => {
+    if (socketRef.current) {
+      try {
+        socketRef.current.send(JSON.stringify({ type: 'client_disconnect' }));
+        socketRef.current.close();
+      } catch (e) {}
+      socketRef.current = null;
+    }
+    const httpUrl = activeHttpUrlRef.current || parseServerUrl(serverIp, serverPort).httpUrl;
+    if (httpUrl) {
+      try { fetch(`${httpUrl}/disconnect`, { method: 'POST' }); } catch (e) {}
+    }
     setConnectionState('disconnected');
     setStatus(prev => ({ ...prev, stream: 'Disconnected' }));
-    if (serverIp) {
-      try {
-        await fetch(`http://${serverIp}:${serverPort}/disconnect`, { method: 'POST' });
-      } catch (e) {}
-    }
   }, [serverIp, serverPort]);
 
   const connectToServer = useCallback(async (method = 'wifi') => {
-    if (!serverIp) return;
+    const primaryCandidate = parseServerUrl(serverIp, serverPort);
+    const secondaryCandidate = parseServerUrl('127.0.0.1', serverPort);
+    const tertiaryCandidate = parseServerUrl('10.0.2.2', serverPort);
+
+    const candidates = [
+      primaryCandidate,
+      secondaryCandidate,
+      tertiaryCandidate,
+    ].filter(c => c.httpUrl && c.wsUrl);
+
+    // Filter out duplicates
+    const uniqueCandidates = [];
+    const seen = new Set();
+    for (const c of candidates) {
+      if (!seen.has(c.httpUrl)) {
+        seen.add(c.httpUrl);
+        uniqueCandidates.push(c);
+      }
+    }
+
+    if (uniqueCandidates.length === 0) {
+      Alert.alert('Server Address Required', 'Please enter your Laptop Server IP or Link.');
+      return;
+    }
+
+    if (socketRef.current) {
+      try { socketRef.current.close(); } catch (e) {}
+      socketRef.current = null;
+    }
+
     setActiveMethod(method);
     setConnectionState('connecting');
     setStatus(prev => ({ ...prev, stream: `Connecting via ${method.toUpperCase()}...` }));
 
-    try {
-      const connectEndpoint = `http://${serverIp}:${serverPort}/connect`;
-      const res = await fetch(connectEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ method, timestamp: Date.now() }),
+    // Test candidate endpoints sequentially
+    for (const candidate of uniqueCandidates) {
+      const { httpUrl, wsUrl } = candidate;
+
+      // 1. Attempt WebSocket connection
+      const wsSuccess = await new Promise((resolve) => {
+        let done = false;
+        try {
+          const ws = new WebSocket(wsUrl);
+
+          ws.onopen = () => {
+            if (!done) {
+              done = true;
+              socketRef.current = ws;
+              activeHttpUrlRef.current = httpUrl;
+              setActiveProtocol('ws');
+              ws.send(JSON.stringify({
+                type: 'client_request_connect',
+                deviceName: 'CricSense Mobile Controller',
+                method: method
+              }));
+              resolve(true);
+            }
+          };
+
+          ws.onmessage = (event) => {
+            try {
+              const payload = JSON.parse(event.data);
+              if (payload.type === 'connect_response' && payload.status === 'accepted') {
+                setConnectionState('connected');
+                setStatus(prev => ({ ...prev, stream: 'Connected & Streaming (WebSocket)' }));
+              }
+            } catch (e) {}
+          };
+
+          ws.onerror = () => {
+            if (!done) {
+              done = true;
+              try { ws.close(); } catch (e) {}
+              resolve(false);
+            }
+          };
+
+          setTimeout(() => {
+            if (!done) {
+              done = true;
+              try { ws.close(); } catch (e) {}
+              resolve(false);
+            }
+          }, 1200);
+        } catch (e) {
+          resolve(false);
+        }
       });
 
-      if (res.ok) {
-        setConnectionState('connecting');
-      } else {
-        setConnectionState('error');
-        setStatus(prev => ({ ...prev, stream: 'Server Connection Refused' }));
+      if (wsSuccess) {
+        setConnectionState('connected');
+        setStatus(prev => ({ ...prev, stream: 'Connected & Streaming (WebSocket)' }));
+        return;
       }
-    } catch (err) {
-      setConnectionState('error');
-      setStatus(prev => ({ ...prev, stream: 'Unable to Reach Server (Check IP)' }));
+
+      // 2. Fallback to HTTP POST connection
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1200);
+
+        const res = await fetch(`${httpUrl}/connect`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ method, timestamp: Date.now() }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          activeHttpUrlRef.current = httpUrl;
+          setActiveProtocol('http');
+          setConnectionState('connected');
+          setStatus(prev => ({ ...prev, stream: 'Connected & Streaming (HTTP Fallback)' }));
+          return;
+        }
+      } catch (e) {}
     }
+
+    setConnectionState('error');
+    setStatus(prev => ({ ...prev, stream: 'Unable to Reach Server' }));
+    Alert.alert(
+      'Unable to Reach PC Server',
+      `Could not connect to PC server at:\n${primaryCandidate.httpUrl}\n\nTroubleshooting Steps:\n1. Ensure PC server is running (npm run dev)\n2. Ensure Phone & PC are connected to the same Wi-Fi / Hotspot\n3. Plug in USB cable with USB Debugging enabled for instant link!`
+    );
   }, [serverIp, serverPort]);
 
-  // Stream data to laptop server over HTTP POST only when connecting or connected
+  // Telemetry stream loop (uses WebSocket if active, or HTTP POST fallback)
   useEffect(() => {
-    if (!serverIp || (connectionState !== 'connecting' && connectionState !== 'connected')) {
+    if (connectionState !== 'connected') {
       return;
     }
 
-    const endpoint = `http://${serverIp}:${serverPort}/telemetry`;
     const transmitTimer = setInterval(async () => {
       const { accelData, gyroData, magData, motionData, activeMethod } = latestRef.current;
       const payload = {
+        type: 'sensor_data',
         method: activeMethod,
         accel: accelData,
         gyro: gyroData,
@@ -77,27 +217,33 @@ export function useSensorData(samplingInterval = 50, serverIp = '192.168.1.100',
         deviceTimestamp: Date.now(),
       };
 
-      try {
-        const response = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-
-        if (response.ok) {
-          setConnectionState('connected');
-          setStatus(prev => ({ ...prev, stream: 'Connected & Streaming' }));
+      if (activeProtocol === 'ws') {
+        const socket = socketRef.current;
+        if (socket && socket.readyState === 1) {
+          try { socket.send(JSON.stringify(payload)); } catch (e) {}
         } else {
-          setStatus(prev => ({ ...prev, stream: 'Server Error' }));
+          setActiveProtocol('http');
         }
-      } catch (err) {
-        setConnectionState('disconnected');
-        setStatus(prev => ({ ...prev, stream: 'Disconnected (Lost Connection)' }));
+      } else {
+        const httpUrl = activeHttpUrlRef.current || parseServerUrl(serverIp, serverPort).httpUrl;
+        if (httpUrl) {
+          try {
+            await fetch(`${httpUrl}/telemetry`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+            setStatus(prev => ({ ...prev, stream: 'Connected & Streaming (HTTP)' }));
+          } catch (e) {
+            setConnectionState('disconnected');
+            setStatus(prev => ({ ...prev, stream: 'Disconnected' }));
+          }
+        }
       }
     }, samplingInterval);
 
     return () => clearInterval(transmitTimer);
-  }, [serverIp, serverPort, samplingInterval, connectionState]);
+  }, [samplingInterval, connectionState, activeProtocol, serverIp, serverPort]);
 
   // Setup Sensor Listeners
   useEffect(() => {
@@ -169,7 +315,7 @@ export function useSensorData(samplingInterval = 50, serverIp = '192.168.1.100',
         setStatus(prev => ({ ...prev, mag: 'Error' }));
       }
 
-      // 4. DeviceMotion (Rotation & Orientation)
+      // 4. DeviceMotion
       try {
         const isMotionAvail = await DeviceMotion.isAvailableAsync();
         setStatus(prev => ({ ...prev, motion: isMotionAvail ? 'Available (Tracking)' : 'Unavailable' }));

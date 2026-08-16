@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert, Modal } from 'react-native';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { parseServerUrl } from '../hooks/useSensorData';
 
 export function HomeScreen({
   onNavigateToData,
@@ -9,8 +11,12 @@ export function HomeScreen({
   connectionState = 'disconnected',
   connectToServer,
   disconnectFromServer,
+  serverIp = '10.97.70.3',
+  onChangeServerIp,
 }) {
   const [activeMethod, setActiveMethod] = useState(selectedMethod);
+  const [scannerVisible, setScannerVisible] = useState(false);
+  const [permission, requestPermission] = useCameraPermissions();
 
   const handleSelect = (methodKey) => {
     setActiveMethod(methodKey);
@@ -19,13 +25,49 @@ export function HomeScreen({
     }
   };
 
+  const handleOpenScanner = async () => {
+    if (!permission) {
+      const res = await requestPermission();
+      if (!res.granted) {
+        Alert.alert('Camera Permission Required', 'Please allow camera access to scan the QR Code on your PC screen.');
+        return;
+      }
+    } else if (!permission.granted) {
+      const res = await requestPermission();
+      if (!res.granted) {
+        Alert.alert('Camera Permission Required', 'Please allow camera access to scan the QR Code on your PC screen.');
+        return;
+      }
+    }
+    setScannerVisible(true);
+  };
+
+  const handleBarCodeScanned = ({ type, data }) => {
+    setScannerVisible(false);
+    if (!data) return;
+
+    const parsed = parseServerUrl(data);
+    const cleanUrl = parsed.cleanHost || data.trim();
+
+    if (onChangeServerIp) {
+      onChangeServerIp(cleanUrl);
+    }
+    handleSelect('wifi');
+    if (connectToServer) {
+      setTimeout(() => {
+        connectToServer('wifi');
+      }, 300);
+    }
+    Alert.alert('QR Code Scanned!', `Connecting to PC server at:\nhttp://${cleanUrl}`);
+  };
+
   const handleConnectToggle = (methodKey, methodName) => {
     handleSelect(methodKey);
 
     if (connectionState === 'connected' && activeMethod === methodKey) {
       Alert.alert(
         'Disconnect Bat Controller?',
-        `Stop streaming telemetry over ${methodName}?`,
+        `Stop streaming real-time telemetry over ${methodName}?`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
@@ -41,14 +83,6 @@ export function HomeScreen({
       if (connectToServer) {
         connectToServer(methodKey);
       }
-      Alert.alert(
-        `Connecting via ${methodName}`,
-        `Initiating stream to PC game server. Web dashboard will show 'Connecting...' then 'Connected'.`,
-        [
-          { text: 'View Live Data', onPress: onNavigateToData },
-          { text: 'OK', style: 'default' },
-        ]
-      );
     }
   };
 
@@ -67,7 +101,7 @@ export function HomeScreen({
         <View style={styles.logoBadge}>
           <Text style={styles.logoIcon}>🏏</Text>
         </View>
-        <Text style={styles.logoTitle}>CricSense Bat Controller</Text>
+        <Text style={styles.logoTitle}>ricSense Bat Controller</Text>
 
         {/* Status indicator directly under logo: GREEN if connected, YELLOW if not */}
         <View style={[
@@ -85,6 +119,20 @@ export function HomeScreen({
             {connectionState === 'connected' ? 'Connected to Web' : 'Not Connected to Web'}
           </Text>
         </View>
+
+        {/* Laptop Server IP / Link Input Box */}
+        <View style={styles.ipBoxHome}>
+          <Text style={styles.ipBoxLabel}>PC SERVER IP OR FULL LINK</Text>
+          <TextInput
+            style={styles.ipInputHome}
+            value={serverIp}
+            onChangeText={onChangeServerIp}
+            placeholder="http://192.168.31.53:8080 or 10.97.70.3"
+            placeholderTextColor="#64748b"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </View>
       </View>
 
       {/* Title Section */}
@@ -92,7 +140,7 @@ export function HomeScreen({
         <Text style={styles.badgeText}>CONNECTION HUB</Text>
         <Text style={styles.mainTitle}>Select Connection Method</Text>
         <Text style={styles.subTitle}>
-          hoose how to connect your bat sensor controller to your laptop game server
+          Choose how to connect your bat sensor controller to your laptop game server
         </Text>
       </View>
 
@@ -264,7 +312,64 @@ export function HomeScreen({
           </TouchableOpacity>
         </TouchableOpacity>
 
+        {/* Method 4: QR Code Auto-Pairing */}
+        <TouchableOpacity
+          style={[
+            styles.methodCard,
+            styles.qrCard,
+            activeMethod === 'qr' && styles.activeMethodCard
+          ]}
+          onPress={handleOpenScanner}
+          activeOpacity={0.8}
+        >
+          <View style={styles.cardHeader}>
+            <View style={[styles.methodIconBadge, styles.qrIconBadge]}>
+              <Text style={styles.iconText}>📷</Text>
+            </View>
+            <View style={styles.methodTitleBox}>
+              <Text style={[styles.methodTag, styles.qrTag]}>METHOD 4 • INSTANT PAIRING</Text>
+              <Text style={styles.methodName}>Scan PC Screen QR Code</Text>
+            </View>
+          </View>
+
+          <Text style={styles.methodDesc}>
+            Point your phone camera at the QR Code displayed on your PC screen (http://localhost:8080) to automatically pair and stream telemetry instantly.
+          </Text>
+
+          <TouchableOpacity
+            style={styles.qrScanButton}
+            onPress={handleOpenScanner}
+          >
+            <Text style={styles.qrScanButtonText}>📷 Scan QR Code to Connect</Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
+
       </View>
+
+      {/* QR Code Scanner Camera Modal */}
+      <Modal visible={scannerVisible} animationType="slide" transparent={false} onRequestClose={() => setScannerVisible(false)}>
+        <View style={styles.cameraContainer}>
+          <View style={styles.cameraHeader}>
+            <Text style={styles.cameraTitle}>Scan PC Screen QR Code</Text>
+            <TouchableOpacity onPress={() => setScannerVisible(false)} style={styles.closeButton}>
+              <Text style={styles.closeButtonText}>✕ Close</Text>
+            </TouchableOpacity>
+          </View>
+
+          <CameraView
+            style={styles.cameraView}
+            barcodeScannerSettings={{
+              barcodeTypes: ["qr"],
+            }}
+            onBarcodeScanned={handleBarCodeScanned}
+          >
+            <View style={styles.scannerOverlay}>
+              <View style={styles.scanTargetBox} />
+              <Text style={styles.scannerHint}>Align camera with QR Code on http://localhost:8080</Text>
+            </View>
+          </CameraView>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -474,6 +579,88 @@ const styles = StyleSheet.create({
   },
   textYellow: {
     color: '#eab308',
+  },
+  qrCard: {
+    borderColor: '#eab308',
+    backgroundColor: '#17150c',
+  },
+  qrIconBadge: {
+    backgroundColor: '#2e2510',
+  },
+  qrTag: {
+    color: '#eab308',
+  },
+  qrScanButton: {
+    backgroundColor: '#eab308',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  qrScanButtonText: {
+    color: '#0f172a',
+    fontWeight: '800',
+    fontSize: 14,
+  },
+  cameraContainer: {
+    flex: 1,
+    backgroundColor: '#0a0d14',
+  },
+  cameraHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 50,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    backgroundColor: '#0f172a',
+    borderBottomWidth: 1,
+    borderBottomColor: '#1e293b',
+  },
+  cameraTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#f8fafc',
+  },
+  closeButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#1e293b',
+    borderRadius: 8,
+  },
+  closeButtonText: {
+    color: '#ef4444',
+    fontWeight: '800',
+    fontSize: 12,
+  },
+  cameraView: {
+    flex: 1,
+  },
+  scannerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(10, 13, 20, 0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  scanTargetBox: {
+    width: 240,
+    height: 240,
+    borderRadius: 24,
+    borderWidth: 3,
+    borderColor: '#eab308',
+    backgroundColor: 'transparent',
+    boxShadow: '0 0 20px rgba(234, 179, 8, 0.4)',
+  },
+  scannerHint: {
+    marginTop: 24,
+    color: '#f8fafc',
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
   },
 });
 

@@ -13,7 +13,7 @@ import { SettingsScreen } from './src/screens/SettingsScreen';
 export default function App() {
   const [activeTab, setActiveTab] = useState('home'); // 'home' | 'data' | 'settings'
   const [samplingInterval, setSamplingInterval] = useState(50); // 50ms default (20Hz)
-  const [serverIp, setServerIp] = useState('192.168.1.100');
+  const [serverIp, setServerIp] = useState('10.97.70.3');
   const [serverPort, setServerPort] = useState('8080');
   const [connectionMethod, setConnectionMethod] = useState('wifi'); // 'usb' | 'wifi' | 'bluetooth'
 
@@ -45,6 +45,8 @@ export default function App() {
             connectionState={sensorData.connectionState}
             connectToServer={sensorData.connectToServer}
             disconnectFromServer={sensorData.disconnectFromServer}
+            serverIp={serverIp}
+            onChangeServerIp={setServerIp}
           />
         )}
 
