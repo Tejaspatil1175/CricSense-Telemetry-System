@@ -8,25 +8,45 @@ export function parseServerUrl(inputIpOrUrl, defaultPort = '8080') {
   let raw = String(inputIpOrUrl).trim();
   if (!raw) return { httpUrl: '', wsUrl: '', cleanHost: '' };
 
-  // Strip duplicate/nested protocols (e.g. http://http:// or ws://http://)
+  // Detect initial scheme (if present)
+  const isHttpsOrWss = /^https:\/\/|^wss:\/\//i.test(raw);
+
+  // Strip protocol prefixes
   raw = raw.replace(/^(https?:\/\/|wss?:\/\/)+/gi, '');
+  // Strip path & query parameters
+  raw = raw.replace(/[\/\?#].*$/, '');
 
-  // Strip path suffix (/telemetry, /connect, / or trailing slashes)
-  raw = raw.replace(/\/.*$/, '');
-
-  // Extract clean host and port
   let host = raw;
-  let port = defaultPort;
+  let port = '';
 
   if (raw.includes(':')) {
     const parts = raw.split(':').filter(Boolean);
     host = parts[0];
-    port = parts[1] || defaultPort;
+    port = parts[1] || '';
   }
 
-  const cleanHost = `${host}:${port}`;
-  const httpUrl = `http://${cleanHost}`;
-  const wsUrl = `ws://${cleanHost}`;
+  // Check if host is an IP address or localhost
+  const isIpOrLocalhost = /^(\d{1,3}\.){3}\d{1,3}$/.test(host) || host.toLowerCase() === 'localhost';
+  const isCloudTunnel = host.includes('loca.lt') || host.includes('ngrok') || host.includes('cloudflare') || host.includes('pinggy') || host.includes('serveo') || host.includes('localtunnel');
+
+  let httpUrl = '';
+  let wsUrl = '';
+  let cleanHost = '';
+
+  if (isCloudTunnel || (!isIpOrLocalhost && port === '')) {
+    // Cloud tunnel or non-IP domain: Cloud tunnels (loca.lt) expose standard 80/443 externally.
+    cleanHost = host;
+    httpUrl = `https://${host}`;
+    wsUrl = `wss://${host}`;
+  } else {
+    // Local IP address (e.g. 192.168.x.x, 10.x.x.x) or explicit host:port
+    const finalPort = port || defaultPort;
+    cleanHost = `${host}:${finalPort}`;
+    const scheme = isHttpsOrWss ? 'https' : 'http';
+    const wsScheme = isHttpsOrWss ? 'wss' : 'ws';
+    httpUrl = `${scheme}://${cleanHost}`;
+    wsUrl = `${wsScheme}://${cleanHost}`;
+  }
 
   return { httpUrl, wsUrl, cleanHost };
 }
@@ -156,7 +176,7 @@ export function useSensorData(samplingInterval = 50, serverIp = '10.97.70.3', se
               try { ws.close(); } catch (e) {}
               resolve(false);
             }
-          }, 1200);
+          }, 2500);
         } catch (e) {
           resolve(false);
         }
@@ -171,11 +191,15 @@ export function useSensorData(samplingInterval = 50, serverIp = '10.97.70.3', se
       // 2. Fallback to HTTP POST connection
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 1200);
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
 
         const res = await fetch(`${httpUrl}/connect`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Bypass-Tunnel-Reminder': 'true',
+            'bypass-tunnel-reminder': 'true'
+          },
           body: JSON.stringify({ method, timestamp: Date.now() }),
           signal: controller.signal,
         });
@@ -230,7 +254,11 @@ export function useSensorData(samplingInterval = 50, serverIp = '10.97.70.3', se
           try {
             await fetch(`${httpUrl}/telemetry`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: {
+                'Content-Type': 'application/json',
+                'Bypass-Tunnel-Reminder': 'true',
+                'bypass-tunnel-reminder': 'true'
+              },
               body: JSON.stringify(payload),
             });
             setStatus(prev => ({ ...prev, stream: 'Connected & Streaming (HTTP)' }));

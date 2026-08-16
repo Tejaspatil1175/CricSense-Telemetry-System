@@ -13,7 +13,7 @@ import { SettingsScreen } from './src/screens/SettingsScreen';
 export default function App() {
   const [activeTab, setActiveTab] = useState('home'); // 'home' | 'data' | 'settings'
   const [samplingInterval, setSamplingInterval] = useState(50); // 50ms default (20Hz)
-  const [serverIp, setServerIp] = useState('10.97.70.3');
+  const [serverIp, setServerIp] = useState('');
   const [serverPort, setServerPort] = useState('8080');
   const [connectionMethod, setConnectionMethod] = useState('wifi'); // 'usb' | 'wifi' | 'bluetooth'
 

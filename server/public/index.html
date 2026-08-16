@@ -815,7 +815,10 @@
       fetch('/api/status')
         .then(res => res.json())
         .then(data => {
-          const activeUrl = data.cloudTunnelUrl || (data.localIps && data.localIps.length > 0 ? `http://${data.localIps[0]}:8080` : '');
+          // Prefer the direct local IP (fastest, most reliable on the same
+          // Wi-Fi/hotspot). Only fall back to the internet tunnel if no
+          // local IP is available at all (e.g. phone truly off-network).
+          const activeUrl = (data.localIps && data.localIps.length > 0 ? `http://${data.localIps[0]}:8080` : data.cloudTunnelUrl || '');
           if (activeUrl) {
             document.getElementById('endpointVal').innerText = activeUrl;
             renderQRCode(activeUrl);

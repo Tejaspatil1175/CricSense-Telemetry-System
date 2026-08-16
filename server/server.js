@@ -35,6 +35,19 @@ try {
 const PORT = process.env.PORT || 8080;
 let cloudTunnelUrl = '';
 
+// Common mobile-hotspot subnet prefixes, so we can prefer them when a PC
+// has multiple network adapters (Ethernet, VPN, virtual adapters, etc.)
+const HOTSPOT_PREFIXES = [
+  '192.168.137.', // Windows Mobile Hotspot (PC hosting hotspot)
+  '192.168.43.',  // Android hotspot (phone hosting, PC tethered)
+  '192.168.49.',  // Android Wi-Fi Direct / newer hotspot
+  '172.20.10.',   // iPhone Personal Hotspot
+];
+
+function isHotspotIp(ip) {
+  return HOTSPOT_PREFIXES.some(prefix => ip.startsWith(prefix));
+}
+
 function getLocalIpAddresses() {
   const interfaces = os.networkInterfaces();
   const addresses = [];
@@ -45,6 +58,9 @@ function getLocalIpAddresses() {
       }
     }
   }
+  // Put likely-hotspot IPs first so the dashboard/QR always suggests the
+  // address that's actually reachable from a phone on the hotspot.
+  addresses.sort((a, b) => (isHotspotIp(b) ? 1 : 0) - (isHotspotIp(a) ? 1 : 0));
   return addresses;
 }
 
@@ -149,11 +165,10 @@ function processTelemetry(data, clientIp) {
   console.log(' Press Ctrl+C to stop laptop receiver server.');
 }
 
-// 1. Create HTTP Server for Web Dashboard static files and status API
 const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Bypass-Tunnel-Reminder, bypass-tunnel-reminder');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(200);
@@ -175,6 +190,60 @@ const server = http.createServer((req, res) => {
       latestPayload,
       serverTime: Date.now(),
     }));
+    return;
+  }
+
+  // HTTP POST /connect Endpoint (Mobile HTTP Fallback)
+  if (req.method === 'POST' && req.url === '/connect') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        selectedMethod = payload.method || 'wifi';
+        mobileState = 'connected';
+        lastMobileConnectTime = Date.now();
+        broadcastStateChange('connected', selectedMethod);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'accepted' }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'error', reason: 'Invalid JSON' }));
+      }
+    });
+    return;
+  }
+
+  // HTTP POST /telemetry Endpoint (Mobile HTTP Fallback Stream)
+  if (req.method === 'POST' && req.url === '/telemetry') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        const clientIp = req.socket.remoteAddress || 'Unknown Client';
+        if (mobileState !== 'connected') {
+          mobileState = 'connected';
+          broadcastStateChange('connected', selectedMethod);
+        }
+        processTelemetry(payload, clientIp);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'ok' }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'error' }));
+      }
+    });
+    return;
+  }
+
+  // HTTP POST /disconnect Endpoint
+  if (req.method === 'POST' && req.url === '/disconnect') {
+    mobileState = 'idle';
+    activeMobileClient = null;
+    broadcastStateChange('idle', selectedMethod);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok' }));
     return;
   }
 
@@ -322,19 +391,27 @@ server.listen(PORT, '0.0.0.0', async () => {
     console.log(`   -> ws://${ip}:${PORT}             (Local Wi-Fi)`);
   });
 
-  if (localtunnel) {
+  async function setupTunnel() {
+    if (!localtunnel) return;
     try {
-      const tunnel = await localtunnel({ port: PORT });
+      const tunnel = await localtunnel({ port: PORT, ...(process.env.SUBDOMAIN ? { subdomain: process.env.SUBDOMAIN } : {}) });
       cloudTunnelUrl = tunnel.url;
       console.log(`   -> ${cloudTunnelUrl.replace('https://', 'wss://')}   (Public Cloud Tunnel - No Firewall!)`);
       console.log(`   -> ${cloudTunnelUrl}           (Public Web URL)`);
       tunnel.on('close', () => {
+        console.log('   [TUNNEL CLOSED] Reconnecting cloud tunnel in 5 seconds...');
         cloudTunnelUrl = '';
+        setTimeout(setupTunnel, 5000);
+      });
+      tunnel.on('error', (err) => {
+        console.log('   [TUNNEL ERROR]', err ? err.message : 'Disconnected');
       });
     } catch (e) {
       console.log('   (Cloud tunnel unavailable - using local network)');
     }
   }
+
+  await setupTunnel();
 
   console.log('================================================================');
   console.log(' Waiting for bat controller telemetry packets...\n');

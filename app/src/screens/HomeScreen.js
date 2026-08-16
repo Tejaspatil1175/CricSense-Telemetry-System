@@ -58,7 +58,7 @@ export function HomeScreen({
         connectToServer('wifi');
       }, 300);
     }
-    Alert.alert('QR Code Scanned!', `Connecting to PC server at:\nhttp://${cleanUrl}`);
+    Alert.alert('QR Code Scanned!', `Connecting to PC server at:\n${parsed.httpUrl || cleanUrl}`);
   };
 
   const handleConnectToggle = (methodKey, methodName) => {
