@@ -1,3 +1,6 @@
+const fs = require('fs');
+const path = require('path');
+
 let maxRecordedSpeed = 0;
 let calibrationProfile = {
   verticalOffsetDeg: 0,
@@ -6,9 +9,23 @@ let calibrationProfile = {
   accuracyScore: 100,
 };
 
+// Try loading saved calibrationProfile.json dataset from disk
+const calFilePath = path.join(__dirname, '..', 'calibrationProfile.json');
+try {
+  if (fs.existsSync(calFilePath)) {
+    const fileContent = fs.readFileSync(calFilePath, 'utf8');
+    const parsed = JSON.parse(fileContent);
+    calibrationProfile = { ...calibrationProfile, ...parsed };
+    console.log('[PHYSICS ENGINE] Loaded custom stadium calibration dataset successfully!');
+  }
+} catch (e) {}
+
 function updateCalibrationProfile(profile) {
   if (profile) {
     calibrationProfile = { ...calibrationProfile, ...profile };
+    try {
+      fs.writeFileSync(calFilePath, JSON.stringify(calibrationProfile, null, 2));
+    } catch (e) {}
   }
 }
 
@@ -37,11 +54,21 @@ function analyzeBatPhysics(data) {
     maxRecordedSpeed = speedKmh;
   }
 
+  // Bowler baseline reference from dataset
+  const bowlerAlpha = calibrationProfile.bowlerDir ? calibrationProfile.bowlerDir.angles.alpha : 0;
+  const skyPitch = calibrationProfile.fullUpSky ? calibrationProfile.fullUpSky.angles.pitchDeg : 83.3;
+
   // Apply calibration offsets
   const rawBetaDeg = (motion.beta || 0) * (180 / Math.PI);
   const betaDeg = rawBetaDeg - (calibrationProfile.verticalOffsetDeg || 0);
   const gammaDeg = ((motion.gamma || 0) * (180 / Math.PI)) - (calibrationProfile.rollCorrectionDeg || 0);
-  const alphaDeg = (motion.alpha || 0) * (180 / Math.PI);
+  
+  // Calculate heading relative to Bowler Direction
+  const rawAlphaRad = motion.alpha || 0;
+  const relAlphaRad = rawAlphaRad - bowlerAlpha;
+  let relAlphaDeg = relAlphaRad * (180 / Math.PI);
+  while (relAlphaDeg > 180) relAlphaDeg -= 360;
+  while (relAlphaDeg < -180) relAlphaDeg += 360;
 
   let faceAlignment = 'Square Face (Straight)';
   if (gammaDeg > 12) {
@@ -52,34 +79,42 @@ function analyzeBatPhysics(data) {
     faceAlignment = `Square Face (${gammaDeg.toFixed(1)}°)`;
   }
 
-  let batPlane = 'Vertical Bat (90°)';
+  let batPlane = 'Vertical Bat';
   if (Math.abs(betaDeg) < 35) {
     batPlane = 'Horizontal (Cross-Bat)';
   } else if (Math.abs(betaDeg) < 65) {
     batPlane = 'Angled Bat';
-  } else if (Math.abs(betaDeg - 90) < 15) {
-    batPlane = 'Vertical Bat (90° Calibrated)';
+  } else if (Math.abs(betaDeg - skyPitch) < 20 || Math.abs(betaDeg - 90) < 20) {
+    batPlane = 'Vertical Bat (Skyward Calibrated)';
   }
 
   const isImpact = totalG > 2.2 || (gyroMag > 4.0 && totalG > 1.8);
   let detectedShot = 'Stance / Ready';
 
-  if (speedKmh > 10 || gyroMag > 2.0) {
-    if (batPlane === 'Horizontal (Cross-Bat)') {
-      if (gz > 2.0 || Math.abs(alphaDeg) > 40) {
-        detectedShot = 'Pull / Hook Shot 💥';
+  // Ground Tap Stance Reset Check
+  if (ay < -0.75 && Math.abs(rawBetaDeg - (-83.5)) < 25) {
+    detectedShot = 'Stance (Ground Tap) 🏏';
+  } else if (speedKmh > 8 || gyroMag > 1.5) {
+    // 360-Degree Stadium Shot Classifier using User Calibration Dataset
+    if (Math.abs(relAlphaDeg) > 135) {
+      detectedShot = 'Ramp / Scoop Shot (Back Stadium) 🌌';
+    } else if (relAlphaDeg > 40) {
+      if (batPlane === 'Horizontal (Cross-Bat)') {
+        detectedShot = 'Square Cut (Off-Side) 🔪';
       } else {
-        detectedShot = 'Square Cut 🔪';
+        detectedShot = 'Cover Drive (Left Stadium) 🚀';
+      }
+    } else if (relAlphaDeg < -40) {
+      if (batPlane === 'Horizontal (Cross-Bat)') {
+        detectedShot = 'Pull / Hook Shot (On-Side) 💥';
+      } else {
+        detectedShot = 'On-Drive / Flick (Right Stadium) 🏏';
       }
     } else {
-      if (gammaDeg > 15) {
-        detectedShot = 'Cover Drive 🚀';
-      } else if (gammaDeg < -15) {
-        detectedShot = 'On Drive / Flick 🏏';
-      } else if (totalG > 3.0) {
-        detectedShot = 'Lofted Power Hit ⚡';
+      if (rawBetaDeg > 65) {
+        detectedShot = 'Lofted Straight Hit (Skyward) ⚡';
       } else {
-        detectedShot = 'Straight Drive 🎯';
+        detectedShot = 'Straight Drive (Toward Bowler) 🎯';
       }
     }
   } else if (totalG > 1.8) {
@@ -99,6 +134,7 @@ function analyzeBatPhysics(data) {
     faceAlignment,
     faceAngleDeg: parseFloat(gammaDeg.toFixed(1)),
     pitchAngleDeg: parseFloat(betaDeg.toFixed(1)),
+    relHeadingDeg: parseFloat(relAlphaDeg.toFixed(1)),
     batPlane,
     isImpact,
     detectedShot,

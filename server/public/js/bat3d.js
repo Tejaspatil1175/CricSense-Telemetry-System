@@ -134,7 +134,15 @@ function update3DBatOrientation(alpha, beta, gamma, quat) {
     rawQuat = new THREE.Quaternion().setFromEuler(rawEuler);
   }
 
-  if (!calibrationQuat) calibrationQuat = new THREE.Quaternion();
+  if (!calibrationQuat) {
+    if (window.stadiumDataset && window.stadiumDataset.bowlerDir && window.stadiumDataset.bowlerDir.quaternion) {
+      const q = window.stadiumDataset.bowlerDir.quaternion;
+      calibrationQuat = new THREE.Quaternion(q.x, q.y, q.z, q.w);
+    } else {
+      // Default baseline from user's recorded dataset: { w: 0.032557, x: -0.502515, y: 0.863681, z: 0.021787 }
+      calibrationQuat = new THREE.Quaternion(-0.5025145861231434, 0.8636807677552061, 0.021787390476834916, 0.032556593179782094);
+    }
+  }
 
   // Apply relative to the calibration baseline
   const relativeQuat = calibrationQuat.clone().invert().multiply(rawQuat);

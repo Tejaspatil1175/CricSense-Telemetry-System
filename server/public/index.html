@@ -50,6 +50,12 @@
           <span class="method-pill active" id="pillWifi" onclick="selectMethod('wifi')">📶 Wi-Fi Stream</span>
           <span class="method-pill" id="pillBt" onclick="selectMethod('bt')">📡 Bluetooth BLE</span>
         </div>
+
+        <div style="margin-top: 16px;">
+          <button class="btn-start-game" onclick="openQuickCalibrationModal()">
+            ⚡ START NEW GAME (Fast 4-Step Calibration)
+          </button>
+        </div>
       </div>
 
       <div class="ip-box">
@@ -243,6 +249,84 @@
       </table>
     </div>
 
+  </div>
+
+  <!-- Fast 4-Step Pre-Game Calibration Modal -->
+  <div class="modal-backdrop" id="quickCalibModal" style="display: none;">
+    <div class="modal-card quick-calib-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <div style="font-size: 11px; font-weight: 800; color: var(--yellow-primary); letter-spacing: 1px; text-transform: uppercase;">FAST PRE-GAME SETUP</div>
+        <button onclick="closeQuickCalibrationModal()" style="background: transparent; border: none; color: #94a3b8; font-weight: 800; font-size: 16px; cursor: pointer;">✕</button>
+      </div>
+
+      <h2 style="font-size: 20px; font-weight: 900; color: var(--text-main); margin-bottom: 4px;">⚡ 10-Second Pre-Game Test</h2>
+      <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">Calibrate 4 key angles before starting every new game session to save time!</p>
+
+      <!-- Step Progress Bar -->
+      <div class="quick-progress-bar">
+        <div class="quick-progress-fill" id="quickProgressFill" style="width: 25%;"></div>
+      </div>
+      <div class="quick-step-pills">
+        <span class="quick-pill active" id="pillStep1">1. Ground Stance</span>
+        <span class="quick-pill" id="pillStep2">2. Bowler Axis</span>
+        <span class="quick-pill" id="pillStep3">3. Toward Left</span>
+        <span class="quick-pill" id="pillStep4">4. Toward Right</span>
+      </div>
+
+      <!-- Step 1: Keep Bat at Ground -->
+      <div class="quick-step-view" id="quickStepView1" style="display: block;">
+        <div class="quick-step-icon">🏏</div>
+        <h3 class="quick-step-heading">Step 1: Keep Bat at Ground</h3>
+        <p class="quick-step-desc">Rest your bat flat on the ground in your batting stance position.</p>
+        <div class="quick-live-badge" id="quickLiveGroundVal">Pitch: --° | Accel Y: -- g</div>
+        <button class="btn-quick-capture" id="btnQuick1" onclick="recordQuickStep('groundTap')">
+          ✓ RECORD GROUND STANCE
+        </button>
+      </div>
+
+      <!-- Step 2: Point Bat Towards Bowler -->
+      <div class="quick-step-view" id="quickStepView2" style="display: none;">
+        <div class="quick-step-icon">🎯</div>
+        <h3 class="quick-step-heading">Step 2: Point Bat Towards Bowler</h3>
+        <p class="quick-step-desc">Hold bat vertically or point handle straight towards the bowler / target pitch.</p>
+        <div class="quick-live-badge" id="quickLiveBowlerVal">Alpha (Heading): --°</div>
+        <button class="btn-quick-capture" id="btnQuick2" onclick="recordQuickStep('bowlerDir')">
+          ✓ RECORD BOWLER AXIS
+        </button>
+      </div>
+
+      <!-- Step 3: Point Bat Towards Left -->
+      <div class="quick-step-view" id="quickStepView3" style="display: none;">
+        <div class="quick-step-icon">⬅️</div>
+        <h3 class="quick-step-heading">Step 3: Point Bat Towards Left</h3>
+        <p class="quick-step-desc">Point or extend your bat towards your left side (Off-Side direction).</p>
+        <div class="quick-live-badge" id="quickLiveLeftVal">Accel X: -- g</div>
+        <button class="btn-quick-capture" id="btnQuick3" onclick="recordQuickStep('fullUpLeft')">
+          ✓ RECORD LEFT VECTOR
+        </button>
+      </div>
+
+      <!-- Step 4: Point Bat Towards Right -->
+      <div class="quick-step-view" id="quickStepView4" style="display: none;">
+        <div class="quick-step-icon">➡️</div>
+        <h3 class="quick-step-heading">Step 4: Point Bat Towards Right</h3>
+        <p class="quick-step-desc">Point or extend your bat towards your right side (On-Side direction).</p>
+        <div class="quick-live-badge" id="quickLiveRightVal">Accel X: -- g</div>
+        <button class="btn-quick-capture btn-quick-finish" id="btnQuick4" onclick="recordQuickStep('fullUpRight')">
+          🚀 RECORD RIGHT VECTOR & START GAME!
+        </button>
+      </div>
+
+      <!-- Game Active Success Banner -->
+      <div class="quick-step-view" id="quickStepViewSuccess" style="display: none;">
+        <div class="quick-step-icon" style="font-size: 56px; animation: bounce 0.6s infinite alternate;">🔥</div>
+        <h3 class="quick-step-heading" style="color: #16a34a; font-size: 22px;">GAME STARTED & READY!</h3>
+        <p class="quick-step-desc">Calibration profiles applied! Real-time swing speed, shot classifier, & 3D bat engine are active.</p>
+        <button class="btn-quick-capture" style="background: #16a34a; color: #fff;" onclick="closeQuickCalibrationModal()">
+          🎮 PLAY GAME NOW
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- Incoming Connection Approval Modal -->

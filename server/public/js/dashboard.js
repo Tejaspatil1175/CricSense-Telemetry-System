@@ -174,15 +174,143 @@ function pollStatus() {
     .catch(() => {});
 }
 
+/* ========================================================================== */
+/* FAST PRE-GAME 4-STEP SENSOR CALIBRATION WIZARD                             */
+/* ========================================================================== */
+
+let currentQuickStep = 1;
+let lastRawAccel = { x: 0, y: 1, z: 0 };
+let lastRawGyro = { x: 0, y: 0, z: 0 };
+
+let quickDataset = {
+  bowlerDir: null,
+  groundTap: null,
+  fullUpLeft: null,
+  fullUpRight: null,
+  metadata: {
+    recordedAt: null,
+    totalPoses: 4,
+    system: "CricSense Fast Pre-Game Calibration Test Suite",
+    isApplied: true,
+  }
+};
+
+function openQuickCalibrationModal() {
+  currentQuickStep = 1;
+  updateQuickStepUI(1);
+  const modal = document.getElementById('quickCalibModal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeQuickCalibrationModal() {
+  const modal = document.getElementById('quickCalibModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function updateQuickStepUI(stepNum) {
+  currentQuickStep = stepNum;
+
+  // Update Progress Fill
+  const fill = document.getElementById('quickProgressFill');
+  if (fill) {
+    if (stepNum === 'success') fill.style.width = '100%';
+    else fill.style.width = `${(stepNum / 4) * 100}%`;
+  }
+
+  // Update Pills
+  for (let i = 1; i <= 4; i++) {
+    const pill = document.getElementById(`pillStep${i}`);
+    const view = document.getElementById(`quickStepView${i}`);
+    if (pill) {
+      pill.classList.remove('active', 'completed');
+      if (i === stepNum) pill.classList.add('active');
+      else if (i < stepNum || stepNum === 'success') pill.classList.add('completed');
+    }
+    if (view) {
+      view.style.display = (i === stepNum) ? 'block' : 'none';
+    }
+  }
+
+  const successView = document.getElementById('quickStepViewSuccess');
+  if (successView) {
+    successView.style.display = (stepNum === 'success') ? 'block' : 'none';
+  }
+}
+
+function recordQuickStep(poseKey) {
+  const pitchDeg = parseFloat((((lastRawMotion ? lastRawMotion.beta : 0) || 0) * (180 / Math.PI)).toFixed(1));
+  const rollDeg = parseFloat((((lastRawMotion ? lastRawMotion.gamma : 0) || 0) * (180 / Math.PI)).toFixed(1));
+  const alphaRad = (lastRawMotion ? lastRawMotion.alpha : 0) || 0;
+  const alphaDeg = parseFloat((alphaRad * (180 / Math.PI)).toFixed(1));
+
+  const accel = lastRawAccel || { x: 0, y: 1, z: 0 };
+  const gyro = lastRawGyro || { x: 0, y: 0, z: 0 };
+  const quat = lastRawQuat || { w: 1, x: 0, y: 0, z: 0 };
+
+  quickDataset[poseKey] = {
+    poseKey,
+    timestamp: Date.now(),
+    angles: { pitchDeg, rollDeg, beta: lastRawMotion ? lastRawMotion.beta : 0, gamma: lastRawMotion ? lastRawMotion.gamma : 0, alpha: alphaRad },
+    accel: { x: parseFloat((accel.x||0).toFixed(4)), y: parseFloat((accel.y||0).toFixed(4)), z: parseFloat((accel.z||0).toFixed(4)) },
+    gyro: { x: parseFloat((gyro.x||0).toFixed(4)), y: parseFloat((gyro.y||0).toFixed(4)), z: parseFloat((gyro.z||0).toFixed(4)) },
+    quaternion: quat,
+  };
+  quickDataset.metadata.recordedAt = new Date().toISOString();
+
+  if (poseKey === 'groundTap') {
+    updateQuickStepUI(2);
+  } else if (poseKey === 'bowlerDir') {
+    updateQuickStepUI(3);
+  } else if (poseKey === 'fullUpLeft') {
+    updateQuickStepUI(4);
+  } else if (poseKey === 'fullUpRight') {
+    saveQuickCalibrationProfile();
+  }
+}
+
+function saveQuickCalibrationProfile() {
+  fetch('/api/calibration', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(quickDataset),
+  })
+    .then(res => res.json())
+    .then(data => {
+      // Auto-calibrate 3D bat engine baseline using recorded Bowler Axis
+      if (quickDataset.bowlerDir && quickDataset.bowlerDir.quaternion) {
+        const q = quickDataset.bowlerDir.quaternion;
+        if (window.THREE && typeof calibrateBatOrientation === 'function') {
+          calibrationQuat = new THREE.Quaternion(q.x, q.y, q.z, q.w);
+        }
+      }
+      updateQuickStepUI('success');
+    })
+    .catch(() => {
+      updateQuickStepUI('success');
+    });
+}
+
 function updateDashboard(data) {
   if (data.accel) {
+    lastRawAccel = data.accel;
     document.getElementById('accelX').innerText = (data.accel.x || 0).toFixed(4) + ' g';
     document.getElementById('accelY').innerText = (data.accel.y || 0).toFixed(4) + ' g';
     document.getElementById('accelZ').innerText = (data.accel.z || 0).toFixed(4) + ' g';
     const totalG = Math.sqrt((data.accel.x||0)**2 + (data.accel.y||0)**2 + (data.accel.z||0)**2);
     document.getElementById('accelTotal').innerText = totalG.toFixed(2) + ' g';
+
+    // Update Quick Calibration Modal Live Badges
+    const badge1 = document.getElementById('quickLiveGroundVal');
+    if (badge1) badge1.innerText = `Pitch: ${((data.motion?.beta||0)*(180/Math.PI)).toFixed(1)}° | Accel Y: ${(data.accel.y||0).toFixed(2)} g`;
+
+    const badge3 = document.getElementById('quickLiveLeftVal');
+    if (badge3) badge3.innerText = `Accel X: ${(data.accel.x||0).toFixed(2)} g | Accel Y: ${(data.accel.y||0).toFixed(2)} g`;
+
+    const badge4 = document.getElementById('quickLiveRightVal');
+    if (badge4) badge4.innerText = `Accel X: ${(data.accel.x||0).toFixed(2)} g | Accel Y: ${(data.accel.y||0).toFixed(2)} g`;
   }
   if (data.gyro) {
+    lastRawGyro = data.gyro;
     document.getElementById('gyroX').innerText = (data.gyro.x || 0).toFixed(4);
     document.getElementById('gyroY').innerText = (data.gyro.y || 0).toFixed(4);
     document.getElementById('gyroZ').innerText = (data.gyro.z || 0).toFixed(4);
@@ -194,6 +322,10 @@ function updateDashboard(data) {
     document.getElementById('motionAlpha').innerText = (data.motion.alpha || 0).toFixed(4) + ' rad';
     document.getElementById('motionBeta').innerText = (data.motion.beta || 0).toFixed(4) + ' rad';
     document.getElementById('motionGamma').innerText = (data.motion.gamma || 0).toFixed(4) + ' rad';
+
+    const alphaDeg = ((data.motion.alpha || 0) * (180 / Math.PI)).toFixed(1);
+    const badge2 = document.getElementById('quickLiveBowlerVal');
+    if (badge2) badge2.innerText = `Heading (Alpha): ${alphaDeg}° | Pitch: ${((data.motion.beta||0)*(180/Math.PI)).toFixed(1)}°`;
 
     lastRawMotion = data.motion;
     if (typeof update3DBatOrientation === 'function') {
@@ -258,4 +390,11 @@ window.addEventListener('DOMContentLoaded', () => {
   if (typeof init3DBat === 'function') {
     init3DBat();
   }
+
+  // Auto-open Quick Calibration Modal if requested via URL
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('openQuickCalib') === '1') {
+    setTimeout(openQuickCalibrationModal, 500);
+  }
 });
+

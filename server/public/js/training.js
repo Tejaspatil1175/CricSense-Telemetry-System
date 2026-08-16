@@ -218,6 +218,123 @@ function updateTrainingUI(data) {
   }
 }
 
+/* ========================================================================== */
+/* STADIUM 360° BOWLER ORIENTATION TEST & DATASET EXPORTER                    */
+/* ========================================================================== */
+
+let stadiumDataset = {
+  bowlerDir: null,
+  groundTap: null,
+  fullUpBowler: null,
+  fullUpSky: null,
+  fullUpLeft: null,
+  fullUpRight: null,
+  fullUpBack: null,
+  metadata: {
+    recordedAt: null,
+    totalPoses: 7,
+    system: "CricSense 9-DOF Stadium Calibration Suite",
+  }
+};
+
+const poseConfig = {
+  bowlerDir: { boxId: 'boxBowler', valId: 'valBowler', btnId: 'btnRecBowler', label: '1. Bowler Axis' },
+  groundTap: { boxId: 'boxGroundTap', valId: 'valGroundTap', btnId: 'btnRecGroundTap', label: '2. Ground Tap' },
+  fullUpBowler: { boxId: 'boxUpBowler', valId: 'valUpBowler', btnId: 'btnRecUpBowler', label: '3. Up Bowler' },
+  fullUpSky: { boxId: 'boxUpSky', valId: 'valUpSky', btnId: 'btnRecUpSky', label: '4. Up Sky' },
+  fullUpLeft: { boxId: 'boxUpLeft', valId: 'valUpLeft', btnId: 'btnRecUpLeft', label: '5. Up Left' },
+  fullUpRight: { boxId: 'boxUpRight', valId: 'valUpRight', btnId: 'btnRecUpRight', label: '6. Up Right' },
+  fullUpBack: { boxId: 'boxUpBack', valId: 'valUpBack', btnId: 'btnRecUpBack', label: '7. Up Back' },
+};
+
+function recordStadiumPose(poseKey) {
+  const currentMotion = (liveTelemetry && liveTelemetry.motion) ? liveTelemetry.motion : { alpha: 0, beta: 1.57, gamma: 0 };
+  const currentAccel = (liveTelemetry && liveTelemetry.accel) ? liveTelemetry.accel : { x: 0, y: 1, z: 0 };
+  const currentGyro = (liveTelemetry && liveTelemetry.gyro) ? liveTelemetry.gyro : { x: 0, y: 0, z: 0 };
+  const currentQuat = (liveTelemetry && liveTelemetry.quat) ? liveTelemetry.quat : { w: 1, x: 0, y: 0, z: 0 };
+
+  const pitchDeg = parseFloat(((currentMotion.beta || 0) * (180 / Math.PI)).toFixed(1));
+  const rollDeg = parseFloat(((currentMotion.gamma || 0) * (180 / Math.PI)).toFixed(1));
+
+  const frameData = {
+    poseKey,
+    timestamp: Date.now(),
+    deviceTimestamp: liveTelemetry ? liveTelemetry.deviceTimestamp : Date.now(),
+    angles: { pitchDeg, rollDeg, beta: currentMotion.beta, gamma: currentMotion.gamma, alpha: currentMotion.alpha },
+    accel: { x: parseFloat((currentAccel.x||0).toFixed(4)), y: parseFloat((currentAccel.y||0).toFixed(4)), z: parseFloat((currentAccel.z||0).toFixed(4)) },
+    gyro: { x: parseFloat((currentGyro.x||0).toFixed(4)), y: parseFloat((currentGyro.y||0).toFixed(4)), z: parseFloat((currentGyro.z||0).toFixed(4)) },
+    quaternion: currentQuat,
+  };
+
+  stadiumDataset[poseKey] = frameData;
+  stadiumDataset.metadata.recordedAt = new Date().toISOString();
+
+  const cfg = poseConfig[poseKey];
+  if (cfg) {
+    const valEl = document.getElementById(cfg.valId);
+    if (valEl) valEl.innerText = `${pitchDeg}° | Y:${frameData.accel.y}`;
+
+    const boxEl = document.getElementById(cfg.boxId);
+    if (boxEl) boxEl.classList.add('recorded');
+
+    const btnEl = document.getElementById(cfg.btnId);
+    if (btnEl) {
+      btnEl.classList.add('captured');
+      btnEl.innerText = '✓ Recorded';
+    }
+  }
+
+  updateDatasetConsole();
+}
+
+function updateDatasetConsole() {
+  const keys = Object.keys(poseConfig);
+  let count = 0;
+  keys.forEach(k => {
+    if (stadiumDataset[k]) count++;
+  });
+
+  const badgeEl = document.getElementById('recordedCountBadge');
+  if (badgeEl) badgeEl.innerText = `${count} of 7 Poses Recorded`;
+
+  const consoleEl = document.getElementById('datasetJsonConsole');
+  if (consoleEl) {
+    consoleEl.value = JSON.stringify(stadiumDataset, null, 2);
+  }
+}
+
+function copyFullDatasetToClipboard() {
+  const jsonStr = JSON.stringify(stadiumDataset, null, 2);
+  navigator.clipboard.writeText(jsonStr)
+    .then(() => {
+      const btn = document.getElementById('btnCopyDataset');
+      if (btn) {
+        const orig = btn.innerText;
+        btn.innerText = '✅ COPIED TO CLIPBOARD! READY TO PASTE';
+        setTimeout(() => { btn.innerText = orig; }, 2500);
+      }
+    })
+    .catch(() => {
+      const consoleEl = document.getElementById('datasetJsonConsole');
+      if (consoleEl) {
+        consoleEl.select();
+        document.execCommand('copy');
+        alert('Dataset selected & copied to clipboard!');
+      }
+    });
+}
+
+function downloadDatasetJson() {
+  const jsonStr = JSON.stringify(stadiumDataset, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `cricsense_stadium_dataset_${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 window.addEventListener('DOMContentLoaded', () => {
   connectTrainingStream();
 });

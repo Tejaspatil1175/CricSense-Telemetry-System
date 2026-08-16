@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Modal, Alert } from 'react-native';
 
 export function BatScreen({ sensorData }) {
   const { accelData, gyroData, magData, motionData, quatData = { w: 1, x: 0, y: 0, z: 0 }, status, connectionState } = sensorData;
@@ -8,6 +8,11 @@ export function BatScreen({ sensorData }) {
   const [maxSpeed, setMaxSpeed] = useState(0);
   const [shotHistory, setShotHistory] = useState([]);
   const [lastLogTime, setLastLogTime] = useState(0);
+
+  // Fast Pre-Game Calibration Wizard States
+  const [quickModalVisible, setQuickModalVisible] = useState(false);
+  const [quickStep, setQuickStep] = useState(1);
+  const [quickDataset, setQuickDataset] = useState({});
 
   // Real-Time Bat Physics Engine Calculations
   const ax = accelData.x || 0;
@@ -87,12 +92,55 @@ export function BatScreen({ sensorData }) {
     });
   };
 
+  const handleRecordQuickStep = (poseKey) => {
+    const pitchDeg = parseFloat((((motionData.beta || 0)) * (180 / Math.PI)).toFixed(1));
+    const rollDeg = parseFloat((((motionData.gamma || 0)) * (180 / Math.PI)).toFixed(1));
+    const alphaRad = motionData.alpha || 0;
+
+    const frameData = {
+      poseKey,
+      timestamp: Date.now(),
+      angles: { pitchDeg, rollDeg, beta: motionData.beta || 0, gamma: motionData.gamma || 0, alpha: alphaRad },
+      accel: { x: parseFloat((accelData.x||0).toFixed(4)), y: parseFloat((accelData.y||0).toFixed(4)), z: parseFloat((accelData.z||0).toFixed(4)) },
+      gyro: { x: parseFloat((gyroData.x||0).toFixed(4)), y: parseFloat((gyroData.y||0).toFixed(4)), z: parseFloat((gyroData.z||0).toFixed(4)) },
+      quaternion: quatData,
+    };
+
+    const newDs = { ...quickDataset, [poseKey]: frameData };
+    setQuickDataset(newDs);
+
+    if (poseKey === 'groundTap') {
+      setQuickStep(2);
+    } else if (poseKey === 'bowlerDir') {
+      setBaselineRot({
+        alpha: motionData.alpha || 0,
+        beta: motionData.beta || 0,
+        gamma: motionData.gamma || 0,
+      });
+      setQuickStep(3);
+    } else if (poseKey === 'fullUpLeft') {
+      setQuickStep(4);
+    } else if (poseKey === 'fullUpRight') {
+      setQuickStep(5); // Success!
+    }
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       {/* Title Header */}
       <View style={styles.titleBox}>
-        <Text style={styles.screenTitle}>🏏 Bat Motion & Handle Analytics</Text>
-        <Text style={styles.screenSubtitle}>6-DOF Quaternion Sensor Fusion & Swing Metrics</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.screenTitle}>🏏 Bat Motion Analytics</Text>
+            <Text style={styles.screenSubtitle}>6-DOF Quaternion Sensor Fusion</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.quickStartBtnMobile}
+            onPress={() => { setQuickStep(1); setQuickModalVisible(true); }}
+          >
+            <Text style={styles.quickStartBtnMobileText}>⚡ FAST PRE-GAME TEST</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* 2D/3D Bat Handle Visualizer Card */}
@@ -100,7 +148,7 @@ export function BatScreen({ sensorData }) {
         <View style={styles.cardHeaderRow}>
           <Text style={styles.goldHeader}>CRICKET BAT ORIENTATION</Text>
           <TouchableOpacity style={styles.calibrateButton} onPress={handleCalibrate}>
-            <Text style={styles.calibrateText}>🎯 Reset Neutral Stance</Text>
+            <Text style={styles.calibrateText}>🎯 Reset Stance</Text>
           </TouchableOpacity>
         </View>
 
@@ -190,6 +238,78 @@ export function BatScreen({ sensorData }) {
           ))}
         </View>
       )}
+
+      {/* 4-Step Quick Pre-Game Modal */}
+      <Modal visible={quickModalVisible} animationType="slide" transparent={true} onRequestClose={() => setQuickModalVisible(false)}>
+        <View style={styles.modalOverlayMobile}>
+          <View style={styles.modalCardMobile}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <Text style={styles.modalTagMobile}>FAST PRE-GAME SETUP</Text>
+              <TouchableOpacity onPress={() => setQuickModalVisible(false)}>
+                <Text style={{ color: '#94a3b8', fontSize: 18, fontWeight: '800' }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalTitleMobile}>⚡ 10-Second Pre-Game Test</Text>
+            <Text style={styles.modalDescMobile}>Calibrate 4 angles before starting game:</Text>
+
+            {quickStep === 1 && (
+              <View style={styles.stepContentMobile}>
+                <Text style={styles.stepIconMobile}>🏏</Text>
+                <Text style={styles.stepTitleMobile}>Step 1: Keep Bat at Ground</Text>
+                <Text style={styles.stepDescMobile}>Rest your bat flat on the ground in stance position.</Text>
+                <TouchableOpacity style={styles.btnCaptureMobile} onPress={() => handleRecordQuickStep('groundTap')}>
+                  <Text style={styles.btnCaptureTextMobile}>✓ RECORD GROUND STANCE</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {quickStep === 2 && (
+              <View style={styles.stepContentMobile}>
+                <Text style={styles.stepIconMobile}>🎯</Text>
+                <Text style={styles.stepTitleMobile}>Step 2: Point Bat Towards Bowler</Text>
+                <Text style={styles.stepDescMobile}>Point bat handle straight towards bowler.</Text>
+                <TouchableOpacity style={styles.btnCaptureMobile} onPress={() => handleRecordQuickStep('bowlerDir')}>
+                  <Text style={styles.btnCaptureTextMobile}>✓ RECORD BOWLER AXIS</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {quickStep === 3 && (
+              <View style={styles.stepContentMobile}>
+                <Text style={styles.stepIconMobile}>⬅️</Text>
+                <Text style={styles.stepTitleMobile}>Step 3: Point Bat Towards Left</Text>
+                <Text style={styles.stepDescMobile}>Point your bat towards your left side.</Text>
+                <TouchableOpacity style={styles.btnCaptureMobile} onPress={() => handleRecordQuickStep('fullUpLeft')}>
+                  <Text style={styles.btnCaptureTextMobile}>✓ RECORD LEFT VECTOR</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {quickStep === 4 && (
+              <View style={styles.stepContentMobile}>
+                <Text style={styles.stepIconMobile}>➡️</Text>
+                <Text style={styles.stepTitleMobile}>Step 4: Point Bat Towards Right</Text>
+                <Text style={styles.stepDescMobile}>Point your bat towards your right side.</Text>
+                <TouchableOpacity style={[styles.btnCaptureMobile, { backgroundColor: '#10b981' }]} onPress={() => handleRecordQuickStep('fullUpRight')}>
+                  <Text style={[styles.btnCaptureTextMobile, { color: '#ffffff' }]}>🚀 RECORD RIGHT & START GAME</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {quickStep === 5 && (
+              <View style={styles.stepContentMobile}>
+                <Text style={styles.stepIconMobile}>🔥</Text>
+                <Text style={[styles.stepTitleMobile, { color: '#00e699' }]}>GAME STARTED!</Text>
+                <Text style={styles.stepDescMobile}>Fast calibration saved & applied! Start playing now.</Text>
+                <TouchableOpacity style={[styles.btnCaptureMobile, { backgroundColor: '#16a34a' }]} onPress={() => setQuickModalVisible(false)}>
+                  <Text style={[styles.btnCaptureTextMobile, { color: '#ffffff' }]}>🎮 START PLAYING NOW</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -428,5 +548,82 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#eab308',
+  },
+  quickStartBtnMobile: {
+    backgroundColor: '#eab308',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  quickStartBtnMobileText: {
+    color: '#0f172a',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  modalOverlayMobile: {
+    flex: 1,
+    backgroundColor: 'rgba(10, 13, 20, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalCardMobile: {
+    backgroundColor: '#0f172a',
+    borderColor: '#eab308',
+    borderWidth: 2,
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalTagMobile: {
+    color: '#eab308',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  modalTitleMobile: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#f8fafc',
+    marginBottom: 4,
+  },
+  modalDescMobile: {
+    fontSize: 12,
+    color: '#94a3b8',
+    marginBottom: 16,
+  },
+  stepContentMobile: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  stepIconMobile: {
+    fontSize: 40,
+    marginBottom: 8,
+  },
+  stepTitleMobile: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#f8fafc',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  stepDescMobile: {
+    fontSize: 12,
+    color: '#94a3b8',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  btnCaptureMobile: {
+    backgroundColor: '#eab308',
+    width: '100%',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  btnCaptureTextMobile: {
+    color: '#0f172a',
+    fontSize: 13,
+    fontWeight: '900',
   },
 });
