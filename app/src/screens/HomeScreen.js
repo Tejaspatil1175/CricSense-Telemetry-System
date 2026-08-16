@@ -1,70 +1,209 @@
-import React from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
 
-export function HomeScreen({ onNavigateToData, onNavigateToSettings }) {
+export function HomeScreen({ onNavigateToData, onNavigateToSettings, selectedMethod = 'wifi', onSelectMethod }) {
+  const [activeMethod, setActiveMethod] = useState(selectedMethod);
+
+  const handleSelect = (methodKey) => {
+    setActiveMethod(methodKey);
+    if (onSelectMethod) {
+      onSelectMethod(methodKey);
+    }
+  };
+
+  const handleConnectAction = (methodName) => {
+    Alert.alert(
+      `${methodName} Selected`,
+      `Your Bat Controller is now set to stream telemetry via ${methodName}.`,
+      [
+        { text: 'View Live Data', onPress: onNavigateToData },
+        { text: 'OK', style: 'default' }
+      ]
+    );
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {/* Game Banner */}
-      <View style={styles.bannerCard}>
-        <Text style={styles.bannerTag}>SYSTEM OVERVIEW</Text>
-        <Text style={styles.bannerTitle}>CricSense Real-Time Cricket Engine</Text>
-        <Text style={styles.bannerDesc}>
-          This mobile app operates as your high-accuracy physical bat motion controller. Attach your mobile device securely to your cricket bat to stream 9-DOF motion telemetry directly to your PC/Laptop game server.
+      {/* Title Section */}
+      <View style={styles.headerSection}>
+        <Text style={styles.badgeText}>CONNECTION HUB</Text>
+        <Text style={styles.mainTitle}>Select Connection Method</Text>
+        <Text style={styles.subTitle}>
+          Choose how to connect your bat sensor controller to your laptop game server
         </Text>
-        <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.primaryButton} onPress={onNavigateToData}>
-            <Text style={styles.primaryButtonText}>View Live Telemetry Data</Text>
-          </TouchableOpacity>
-        </View>
       </View>
 
-      {/* System Architecture Info */}
-      <View style={styles.infoCard}>
-        <Text style={styles.sectionHeader}>HOW IT WORKS</Text>
+      {/* Connection Methods Container */}
+      <View style={styles.methodsList}>
         
-        <View style={styles.stepItem}>
-          <View style={styles.stepBadge}><Text style={styles.stepNumber}>1</Text></View>
-          <View style={styles.stepContent}>
-            <Text style={styles.stepTitle}>Bat Mounting</Text>
-            <Text style={styles.stepDesc}>Mount smartphone firmly on the bat spine using a sports sleeve or mount bracket.</Text>
+        {/* Method 1: USB Connection */}
+        <TouchableOpacity
+          style={[
+            styles.methodCard,
+            activeMethod === 'usb' && styles.activeMethodCard
+          ]}
+          onPress={() => handleSelect('usb')}
+          activeOpacity={0.8}
+        >
+          <View style={styles.cardHeader}>
+            <View style={styles.methodIconBadge}>
+              <Text style={styles.iconText}>🔌</Text>
+            </View>
+            <View style={styles.methodTitleBox}>
+              <Text style={styles.methodTag}>METHOD 1 • ULTRA-LOW LATENCY</Text>
+              <Text style={styles.methodName}>USB Cable Connection</Text>
+            </View>
+            {activeMethod === 'usb' && (
+              <View style={styles.activeBadge}>
+                <Text style={styles.activeBadgeText}>ACTIVE</Text>
+              </View>
+            )}
           </View>
-        </View>
 
-        <View style={styles.stepItem}>
-          <View style={styles.stepBadge}><Text style={styles.stepNumber}>2</Text></View>
-          <View style={styles.stepContent}>
-            <Text style={styles.stepTitle}>High-Frequency Telemetry Stream</Text>
-            <Text style={styles.stepDesc}>App streams 20Hz Accelerometer, Gyroscope, DeviceMotion Rotation, and Magnetometer packets.</Text>
+          <Text style={styles.methodDesc}>
+            Connect your phone directly to your laptop via USB cable. Provides the lowest latency (&lt;2ms) for ultra-fast bat swing detection using ADB or USB Tethering.
+          </Text>
+
+          <View style={styles.specsRow}>
+            <View style={styles.specItem}>
+              <Text style={styles.specLabel}>Speed / Latency</Text>
+              <Text style={styles.specValue}>~ 1-2 ms</Text>
+            </View>
+            <View style={styles.specItem}>
+              <Text style={styles.specLabel}>Stability</Text>
+              <Text style={styles.specValue}>Maximum</Text>
+            </View>
+            <View style={styles.specItem}>
+              <Text style={styles.specLabel}>Port</Text>
+              <Text style={styles.specValue}>8080 (ADB)</Text>
+            </View>
           </View>
-        </View>
 
-        <View style={styles.stepItem}>
-          <View style={styles.stepBadge}><Text style={styles.stepNumber}>3</Text></View>
-          <View style={styles.stepContent}>
-            <Text style={styles.stepTitle}>PC/Laptop Game Execution</Text>
-            <Text style={styles.stepDesc}>Your PC game server calculates bat swing velocity, impact force, and renders stroke trajectories in real-time.</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Quick Setup Card */}
-      <View style={styles.setupCard}>
-        <Text style={styles.sectionHeader}>BAT CONTROLLER STATUS</Text>
-        <View style={styles.statusRow}>
-          <Text style={styles.statusLabel}>Bat Connection</Text>
-          <Text style={styles.statusValueActive}>Ready for Swing</Text>
-        </View>
-        <View style={styles.statusRow}>
-          <Text style={styles.statusLabel}>Telemetry Sampling Rate</Text>
-          <Text style={styles.statusValue}>50 ms (20 Hz)</Text>
-        </View>
-        <View style={styles.statusRow}>
-          <Text style={styles.statusLabel}>PC Server Host</Text>
-          <Text style={styles.statusValue}>192.168.1.100:8080</Text>
-        </View>
-        <TouchableOpacity style={styles.secondaryButton} onPress={onNavigateToSettings}>
-          <Text style={styles.secondaryButtonText}>Configure Settings</Text>
+          <TouchableOpacity
+            style={[styles.connectButton, activeMethod === 'usb' && styles.connectButtonActive]}
+            onPress={() => {
+              handleSelect('usb');
+              handleConnectAction('USB Wired Link');
+            }}
+          >
+            <Text style={[styles.connectButtonText, activeMethod === 'usb' && styles.connectButtonTextActive]}>
+              {activeMethod === 'usb' ? 'Connected via USB' : 'Connect via USB'}
+            </Text>
+          </TouchableOpacity>
         </TouchableOpacity>
+
+        {/* Method 2: Wi-Fi Connection */}
+        <TouchableOpacity
+          style={[
+            styles.methodCard,
+            activeMethod === 'wifi' && styles.activeMethodCard
+          ]}
+          onPress={() => handleSelect('wifi')}
+          activeOpacity={0.8}
+        >
+          <View style={styles.cardHeader}>
+            <View style={styles.methodIconBadge}>
+              <Text style={styles.iconText}>📶</Text>
+            </View>
+            <View style={styles.methodTitleBox}>
+              <Text style={styles.methodTag}>METHOD 2 • WIRELESS NETWORK</Text>
+              <Text style={styles.methodName}>Wi-Fi Telemetry Stream</Text>
+            </View>
+            {activeMethod === 'wifi' && (
+              <View style={styles.activeBadge}>
+                <Text style={styles.activeBadgeText}>ACTIVE</Text>
+              </View>
+            )}
+          </View>
+
+          <Text style={styles.methodDesc}>
+            Connect phone and laptop to the same Wi-Fi network or local hotspot. Streams 9-DOF sensor data over HTTP POST or WebSocket.
+          </Text>
+
+          <View style={styles.specsRow}>
+            <View style={styles.specItem}>
+              <Text style={styles.specLabel}>Range</Text>
+              <Text style={styles.specValue}>Local Router</Text>
+            </View>
+            <View style={styles.specItem}>
+              <Text style={styles.specLabel}>Latency</Text>
+              <Text style={styles.specValue}>~ 5-10 ms</Text>
+            </View>
+            <View style={styles.specItem}>
+              <Text style={styles.specLabel}>Protocol</Text>
+              <Text style={styles.specValue}>HTTP / WS</Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.connectButton, activeMethod === 'wifi' && styles.connectButtonActive]}
+            onPress={() => {
+              handleSelect('wifi');
+              handleConnectAction('Wi-Fi Telemetry Stream');
+            }}
+          >
+            <Text style={[styles.connectButtonText, activeMethod === 'wifi' && styles.connectButtonTextActive]}>
+              {activeMethod === 'wifi' ? 'Connected via Wi-Fi' : 'Connect via Wi-Fi'}
+            </Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
+
+        {/* Method 3: Bluetooth Connection */}
+        <TouchableOpacity
+          style={[
+            styles.methodCard,
+            activeMethod === 'bluetooth' && styles.activeMethodCard
+          ]}
+          onPress={() => handleSelect('bluetooth')}
+          activeOpacity={0.8}
+        >
+          <View style={styles.cardHeader}>
+            <View style={styles.methodIconBadge}>
+              <Text style={styles.iconText}>📡</Text>
+            </View>
+            <View style={styles.methodTitleBox}>
+              <Text style={styles.methodTag}>METHOD 3 • DIRECT BLE</Text>
+              <Text style={styles.methodName}>Bluetooth Pairing</Text>
+            </View>
+            {activeMethod === 'bluetooth' && (
+              <View style={styles.activeBadge}>
+                <Text style={styles.activeBadgeText}>ACTIVE</Text>
+              </View>
+            )}
+          </View>
+
+          <Text style={styles.methodDesc}>
+            Direct wireless pairing via Bluetooth Low Energy (BLE). Ideal when no Wi-Fi router or USB cable is available.
+          </Text>
+
+          <View style={styles.specsRow}>
+            <View style={styles.specItem}>
+              <Text style={styles.specLabel}>Type</Text>
+              <Text style={styles.specValue}>Bluetooth LE</Text>
+            </View>
+            <View style={styles.specItem}>
+              <Text style={styles.specLabel}>Setup</Text>
+              <Text style={styles.specValue}>Direct Pair</Text>
+            </View>
+            <View style={styles.specItem}>
+              <Text style={styles.specLabel}>Status</Text>
+              <Text style={styles.specValue}>Ready</Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.connectButton, activeMethod === 'bluetooth' && styles.connectButtonActive]}
+            onPress={() => {
+              handleSelect('bluetooth');
+              handleConnectAction('Bluetooth Direct Pairing');
+            }}
+          >
+            <Text style={[styles.connectButtonText, activeMethod === 'bluetooth' && styles.connectButtonTextActive]}>
+              {activeMethod === 'bluetooth' ? 'Paired via Bluetooth' : 'Connect via Bluetooth'}
+            </Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
+
       </View>
     </ScrollView>
   );
@@ -76,130 +215,132 @@ const styles = StyleSheet.create({
     gap: 16,
     backgroundColor: '#0a0d14',
   },
-  bannerCard: {
-    backgroundColor: '#111827',
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#1f2937',
+  headerSection: {
+    marginBottom: 4,
   },
-  bannerTag: {
+  badgeText: {
     fontSize: 10,
     fontWeight: '800',
     color: '#00e699',
-    letterSpacing: 1,
-    marginBottom: 6,
+    letterSpacing: 1.2,
+    marginBottom: 4,
   },
-  bannerTitle: {
-    fontSize: 20,
+  mainTitle: {
+    fontSize: 22,
     fontWeight: '800',
     color: '#f8fafc',
-    marginBottom: 8,
+    marginBottom: 4,
   },
-  bannerDesc: {
+  subTitle: {
     fontSize: 13,
     color: '#94a3b8',
-    lineHeight: 19,
-    marginBottom: 16,
+    lineHeight: 18,
   },
-  buttonRow: {
-    flexDirection: 'row',
+  methodsList: {
+    gap: 14,
   },
-  primaryButton: {
-    backgroundColor: '#38bdf8',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-  },
-  primaryButtonText: {
-    color: '#0f172a',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  infoCard: {
+  methodCard: {
     backgroundColor: '#111827',
     borderRadius: 16,
     padding: 18,
     borderWidth: 1,
     borderColor: '#1f2937',
-    gap: 14,
   },
-  sectionHeader: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#38bdf8',
-    letterSpacing: 0.8,
+  activeMethodCard: {
+    borderColor: '#38bdf8',
+    backgroundColor: '#0f172a',
   },
-  stepItem: {
+  cardHeader: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    marginBottom: 12,
     gap: 12,
   },
-  stepBadge: {
-    width: 24,
-    height: 24,
+  methodIconBadge: {
+    width: 42,
+    height: 42,
     borderRadius: 12,
     backgroundColor: '#1e293b',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 2,
   },
-  stepNumber: {
-    color: '#38bdf8',
-    fontWeight: '800',
-    fontSize: 12,
+  iconText: {
+    fontSize: 20,
   },
-  stepContent: {
+  methodTitleBox: {
     flex: 1,
   },
-  stepTitle: {
+  methodTag: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#38bdf8',
+    letterSpacing: 0.8,
+    marginBottom: 2,
+  },
+  methodName: {
+    fontSize: 16,
+    fontWeight: '800',
     color: '#f8fafc',
-    fontSize: 14,
-    fontWeight: '700',
   },
-  stepDesc: {
-    color: '#94a3b8',
-    fontSize: 12,
-    marginTop: 2,
-    lineHeight: 17,
-  },
-  setupCard: {
-    backgroundColor: '#111827',
-    borderRadius: 16,
-    padding: 18,
+  activeBadge: {
+    backgroundColor: '#132e27',
     borderWidth: 1,
-    borderColor: '#1f2937',
-    gap: 10,
+    borderColor: '#00e699',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
   },
-  statusRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 4,
-  },
-  statusLabel: {
-    color: '#94a3b8',
-    fontSize: 13,
-  },
-  statusValue: {
-    color: '#f8fafc',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  statusValueActive: {
+  activeBadgeText: {
     color: '#00e699',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  methodDesc: {
     fontSize: 13,
-    fontWeight: '700',
+    color: '#94a3b8',
+    lineHeight: 19,
+    marginBottom: 14,
   },
-  secondaryButton: {
-    backgroundColor: '#1e293b',
-    paddingVertical: 10,
-    borderRadius: 8,
+  specsRow: {
+    flexDirection: 'row',
+    backgroundColor: '#0a0d14',
+    borderRadius: 10,
+    padding: 10,
+    justifyContent: 'space-around',
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+  },
+  specItem: {
     alignItems: 'center',
-    marginTop: 6,
   },
-  secondaryButtonText: {
+  specLabel: {
+    fontSize: 10,
+    color: '#64748b',
+    marginBottom: 2,
+  },
+  specValue: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#f8fafc',
+  },
+  connectButton: {
+    backgroundColor: '#1e293b',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  connectButtonActive: {
+    backgroundColor: '#38bdf8',
+  },
+  connectButtonText: {
     color: '#38bdf8',
     fontWeight: '700',
-    fontSize: 12,
+    fontSize: 13,
+  },
+  connectButtonTextActive: {
+    color: '#0f172a',
+    fontWeight: '800',
   },
 });
+

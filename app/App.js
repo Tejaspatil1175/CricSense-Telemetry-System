@@ -15,6 +15,7 @@ export default function App() {
   const [samplingInterval, setSamplingInterval] = useState(50); // 50ms default (20Hz)
   const [serverIp, setServerIp] = useState('192.168.1.100');
   const [serverPort, setServerPort] = useState('8080');
+  const [connectionMethod, setConnectionMethod] = useState('wifi'); // 'usb' | 'wifi' | 'bluetooth'
 
   const sensorData = useSensorData(samplingInterval, serverIp, serverPort);
 
@@ -39,6 +40,8 @@ export default function App() {
           <HomeScreen
             onNavigateToData={() => setActiveTab('data')}
             onNavigateToSettings={() => setActiveTab('settings')}
+            selectedMethod={connectionMethod}
+            onSelectMethod={setConnectionMethod}
           />
         )}
 
