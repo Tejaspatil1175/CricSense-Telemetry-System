@@ -1,10 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
 
-export function SettingsScreen({ currentInterval, onChangeInterval }) {
-  const [serverIp, setServerIp] = useState('192.168.1.100');
-  const [serverPort, setServerPort] = useState('8080');
-
+export function SettingsScreen({ currentInterval, onChangeInterval, serverIp, onChangeServerIp, serverPort, onChangeServerPort }) {
   const intervals = [
     { label: '100 Hz (10 ms)', value: 10 },
     { label: '50 Hz (20 ms)', value: 20 },
@@ -45,11 +42,11 @@ export function SettingsScreen({ currentInterval, onChangeInterval }) {
       {/* Server Pairing Config */}
       <View style={styles.card}>
         <Text style={styles.sectionHeader}>PC GAME SERVER CONNECTION</Text>
-        <Text style={styles.inputLabel}>Server IP Address</Text>
+        <Text style={styles.inputLabel}>Laptop Server IP Address</Text>
         <TextInput
           style={styles.textInput}
           value={serverIp}
-          onChangeText={setServerIp}
+          onChangeText={onChangeServerIp}
           placeholder="192.168.x.x"
           placeholderTextColor="#64748b"
         />
@@ -58,7 +55,7 @@ export function SettingsScreen({ currentInterval, onChangeInterval }) {
         <TextInput
           style={styles.textInput}
           value={serverPort}
-          onChangeText={setServerPort}
+          onChangeText={onChangeServerPort}
           keyboardType="numeric"
           placeholder="8080"
           placeholderTextColor="#64748b"

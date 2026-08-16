@@ -13,8 +13,10 @@ import { SettingsScreen } from './src/screens/SettingsScreen';
 export default function App() {
   const [activeTab, setActiveTab] = useState('home'); // 'home' | 'data' | 'settings'
   const [samplingInterval, setSamplingInterval] = useState(50); // 50ms default (20Hz)
+  const [serverIp, setServerIp] = useState('192.168.1.100');
+  const [serverPort, setServerPort] = useState('8080');
 
-  const sensorData = useSensorData(samplingInterval);
+  const sensorData = useSensorData(samplingInterval, serverIp, serverPort);
 
   const handleAccountPress = () => {
     Alert.alert(
@@ -46,6 +48,10 @@ export default function App() {
           <SettingsScreen
             currentInterval={samplingInterval}
             onChangeInterval={setSamplingInterval}
+            serverIp={serverIp}
+            onChangeServerIp={setServerIp}
+            serverPort={serverPort}
+            onChangeServerPort={setServerPort}
           />
         )}
       </View>

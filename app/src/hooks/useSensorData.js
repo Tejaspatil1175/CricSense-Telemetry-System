@@ -1,19 +1,61 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Accelerometer, Gyroscope, Magnetometer, DeviceMotion } from 'expo-sensors';
 
-export function useSensorData(samplingInterval = 50) {
+export function useSensorData(samplingInterval = 50, serverIp = '192.168.1.100', serverPort = '8080') {
   const [accelData, setAccelData] = useState({ x: 0, y: 0, z: 0, timestamp: 0, deviceTimestamp: 0 });
   const [gyroData, setGyroData] = useState({ x: 0, y: 0, z: 0, timestamp: 0, deviceTimestamp: 0 });
   const [magData, setMagData] = useState({ x: 0, y: 0, z: 0, heading: 0, timestamp: 0, deviceTimestamp: 0 });
   const [motionData, setMotionData] = useState({ alpha: 0, beta: 0, gamma: 0, orientation: 0, timestamp: 0, deviceTimestamp: 0 });
-  
+
   const [status, setStatus] = useState({
     accel: 'Checking...',
     gyro: 'Checking...',
     mag: 'Checking...',
     motion: 'Checking...',
+    stream: 'Disconnected',
   });
 
+  const latestRef = useRef({ accelData, gyroData, magData, motionData });
+  useEffect(() => {
+    latestRef.current = { accelData, gyroData, magData, motionData };
+  }, [accelData, gyroData, magData, motionData]);
+
+  // Stream data to laptop server over HTTP POST
+  useEffect(() => {
+    if (!serverIp) return;
+
+    const endpoint = `http://${serverIp}:${serverPort}/telemetry`;
+    const transmitTimer = setInterval(async () => {
+      const { accelData, gyroData, magData, motionData } = latestRef.current;
+      const payload = {
+        accel: accelData,
+        gyro: gyroData,
+        motion: motionData,
+        mag: magData,
+        deviceTimestamp: Date.now(),
+      };
+
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        if (response.ok) {
+          setStatus(prev => ({ ...prev, stream: 'Connected & Streaming' }));
+        } else {
+          setStatus(prev => ({ ...prev, stream: 'Server Error' }));
+        }
+      } catch (err) {
+        setStatus(prev => ({ ...prev, stream: 'Disconnected (Check IP)' }));
+      }
+    }, samplingInterval);
+
+    return () => clearInterval(transmitTimer);
+  }, [serverIp, serverPort, samplingInterval]);
+
+  // Setup Sensor Listeners
   useEffect(() => {
     let accelSub, gyroSub, magSub, motionSub;
 
