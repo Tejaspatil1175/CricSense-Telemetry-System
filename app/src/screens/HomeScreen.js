@@ -101,7 +101,7 @@ export function HomeScreen({
         <View style={styles.logoBadge}>
           <Text style={styles.logoIcon}>🏏</Text>
         </View>
-        <Text style={styles.logoTitle}>ricSense Bat Controller</Text>
+        <Text style={styles.logoTitle}>CricSense Bat Controller</Text>
 
         {/* Status indicator directly under logo: GREEN if connected, YELLOW if not */}
         <View style={[

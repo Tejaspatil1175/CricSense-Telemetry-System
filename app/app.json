@@ -14,11 +14,17 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#1e1e2e"
-      }
+      },
+      "package": "com.tejaspatil_010.app"
     },
     "web": {
       "bundler": "metro"
     },
-    "plugins": []
+    "plugins": [],
+    "extra": {
+      "eas": {
+        "projectId": "3e864224-5aee-457f-bcab-0c0b1b0f1021"
+      }
+    }
   }
 }
