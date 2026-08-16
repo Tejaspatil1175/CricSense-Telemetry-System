@@ -255,4 +255,7 @@ function addShotToLog(shotName, speedKmh, faceAlign, impactG) {
 window.addEventListener('DOMContentLoaded', () => {
   pollStatus();
   connectTelemetryStream();
+  if (typeof init3DBat === 'function') {
+    init3DBat();
+  }
 });
