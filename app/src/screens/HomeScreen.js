@@ -137,7 +137,7 @@ export function HomeScreen({
 
       {/* Title Section */}
       <View style={styles.headerSection}>
-        <Text style={styles.badgeText}>CONNECTION HUB</Text>
+        <Text style={styles.badgeText}>CONNECTION HUB new version</Text>
         <Text style={styles.mainTitle}>Select Connection Method</Text>
         <Text style={styles.subTitle}>
           Choose how to connect your bat sensor controller to your laptop game server
