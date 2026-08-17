@@ -3,8 +3,9 @@ using UnityEngine;
 namespace CricSense
 {
     /// <summary>
-    /// Procedural runtime builder that constructs the 3D stadium, brown pitch, white crease lines,
-    /// stumps, bails, 3D bat, ball prefab, and camera setups using Unity primitives.
+    /// Procedural runtime builder that constructs the 3D stadium, MRF Genius Cricket Bat,
+    /// 3D Virat Kohli Batsman model, 3D Bowler player, floodlight towers, advertising boundary boards,
+    /// brown pitch, white crease lines, stumps, bails, and camera setups.
     /// </summary>
     [ExecuteAlways]
     public class StadiumBuilder : MonoBehaviour
@@ -15,6 +16,10 @@ namespace CricSense
         public Material woodMaterial;
         public Material ballMaterial;
         public Material whiteLineMaterial;
+        public Material indiaJerseyMaterial;
+        public Material mrfRedMaterial;
+        public Material padWhiteMaterial;
+        public Material helmetNavyMaterial;
 
         private void Awake()
         {
@@ -35,29 +40,34 @@ namespace CricSense
 
         public void BuildEnvironmentIfMissing()
         {
-            // 1. Create Materials if missing
+            // 1. Create Materials
             CreateDefaultMaterials();
 
-            // 2. Build Stadium Ground & Pitch Strip
+            // 2. Build Stadium Field, Pitch & Floodlights
             BuildFieldAndPitch();
+            BuildStadiumFloodlights();
+            BuildBoundaryAdBoards();
 
             // 3. Build Stumps & Bails at Batsman End and Bowler End
             StumpGroup batsmanStumps = BuildStumps(new Vector3(0.0f, 0.0f, 3.5f), "BatsmanStumps");
             StumpGroup bowlerStumps = BuildStumps(new Vector3(0.0f, 0.0f, -10.0f), "BowlerStumps");
 
-            // 4. Build 3D Cricket Bat
+            // 4. Build MRF Genius Bat & 3D Virat Kohli Batsman Model
             BatController bat = FindAnyObjectByType<BatController>();
             if (bat == null)
             {
-                bat = BuildCricketBat();
+                bat = BuildMRFCricketBat();
             }
 
-            // 5. Build 3D Cricket Ball Prefab & Bowling Machine
+            BuildViratKohliBatsman(bat);
+
+            // 5. Build 3D Bowler & Bowling Machine
             BowlingMachine machine = FindAnyObjectByType<BowlingMachine>();
             if (machine == null)
             {
                 machine = BuildBowlingMachine();
             }
+            Build3DBowler(machine);
 
             // 6. Setup Camera Controller
             Camera mainCam = Camera.main;
@@ -91,8 +101,8 @@ namespace CricSense
                 sun = sunObj.AddComponent<Light>();
                 sun.type = LightType.Directional;
                 sun.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
-                sun.intensity = 1.2f;
-                sun.color = new Color(1.0f, 0.96f, 0.85f);
+                sun.intensity = 1.25f;
+                sun.color = new Color(1.0f, 0.96f, 0.88f);
             }
         }
 
@@ -101,31 +111,55 @@ namespace CricSense
             if (grassMaterial == null)
             {
                 grassMaterial = new Material(Shader.Find("Standard"));
-                grassMaterial.color = new Color(0.12f, 0.45f, 0.20f);
-                grassMaterial.SetFloat("_Glossiness", 0.1f);
+                grassMaterial.color = new Color(0.10f, 0.42f, 0.18f);
+                grassMaterial.SetFloat("_Glossiness", 0.15f);
             }
             if (pitchMaterial == null)
             {
                 pitchMaterial = new Material(Shader.Find("Standard"));
-                pitchMaterial.color = new Color(0.65f, 0.52f, 0.35f);
+                pitchMaterial.color = new Color(0.68f, 0.54f, 0.36f);
                 pitchMaterial.SetFloat("_Glossiness", 0.2f);
             }
             if (woodMaterial == null)
             {
                 woodMaterial = new Material(Shader.Find("Standard"));
-                woodMaterial.color = new Color(0.85f, 0.68f, 0.45f);
+                woodMaterial.color = new Color(0.88f, 0.72f, 0.48f);
                 woodMaterial.SetFloat("_Glossiness", 0.3f);
             }
             if (ballMaterial == null)
             {
                 ballMaterial = new Material(Shader.Find("Standard"));
                 ballMaterial.color = new Color(0.82f, 0.18f, 0.12f);
-                ballMaterial.SetFloat("_Glossiness", 0.6f);
+                ballMaterial.SetFloat("_Glossiness", 0.65f);
             }
             if (whiteLineMaterial == null)
             {
                 whiteLineMaterial = new Material(Shader.Find("Standard"));
                 whiteLineMaterial.color = Color.white;
+            }
+            if (indiaJerseyMaterial == null)
+            {
+                indiaJerseyMaterial = new Material(Shader.Find("Standard"));
+                indiaJerseyMaterial.color = new Color(0.0f, 0.18f, 0.38f); // Team India Navy Blue
+                indiaJerseyMaterial.SetFloat("_Glossiness", 0.4f);
+            }
+            if (mrfRedMaterial == null)
+            {
+                mrfRedMaterial = new Material(Shader.Find("Standard"));
+                mrfRedMaterial.color = new Color(0.88f, 0.11f, 0.28f); // Vibrant MRF Red
+                mrfRedMaterial.SetFloat("_Glossiness", 0.6f);
+            }
+            if (padWhiteMaterial == null)
+            {
+                padWhiteMaterial = new Material(Shader.Find("Standard"));
+                padWhiteMaterial.color = new Color(0.96f, 0.96f, 0.96f);
+                padWhiteMaterial.SetFloat("_Glossiness", 0.2f);
+            }
+            if (helmetNavyMaterial == null)
+            {
+                helmetNavyMaterial = new Material(Shader.Find("Standard"));
+                helmetNavyMaterial.color = new Color(0.0f, 0.12f, 0.26f);
+                helmetNavyMaterial.SetFloat("_Glossiness", 0.7f);
             }
         }
 
@@ -137,7 +171,7 @@ namespace CricSense
             GameObject fieldObj = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             fieldObj.name = "CricketField";
             fieldObj.transform.position = new Vector3(0f, -0.05f, -3.0f);
-            fieldObj.transform.localScale = new Vector3(50f, 0.05f, 50f);
+            fieldObj.transform.localScale = new Vector3(55f, 0.05f, 55f);
             fieldObj.GetComponent<Renderer>().sharedMaterial = grassMaterial;
 
             // Rectangular Pitch Strip (22m length x 3m width)
@@ -159,6 +193,59 @@ namespace CricSense
             line.transform.position = pos;
             line.transform.localScale = scale;
             line.GetComponent<Renderer>().sharedMaterial = whiteLineMaterial;
+        }
+
+        private void BuildStadiumFloodlights()
+        {
+            if (GameObject.Find("Floodlights") != null) return;
+            GameObject lightsObj = new GameObject("Floodlights");
+
+            Vector3[] towerPositions = new Vector3[]
+            {
+                new Vector3(-24f, 0f, 20f),
+                new Vector3(24f, 0f, 20f),
+                new Vector3(-24f, 0f, -25f),
+                new Vector3(24f, 0f, -25f)
+            };
+
+            foreach (Vector3 pos in towerPositions)
+            {
+                GameObject tower = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                tower.name = "FloodlightTower";
+                tower.transform.SetParent(lightsObj.transform);
+                tower.transform.position = pos + new Vector3(0f, 10f, 0f);
+                tower.transform.localScale = new Vector3(0.5f, 10f, 0.5f);
+
+                GameObject panel = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                panel.name = "LightPanel";
+                panel.transform.SetParent(tower.transform);
+                panel.transform.localPosition = new Vector3(0f, 0.95f, 0f);
+                panel.transform.localScale = new Vector3(3f, 0.1f, 1.5f);
+                panel.transform.rotation = Quaternion.LookRotation(new Vector3(0f, 0f, -3f) - pos);
+            }
+        }
+
+        private void BuildBoundaryAdBoards()
+        {
+            if (GameObject.Find("BoundaryAdBoards") != null) return;
+            GameObject boardsGroup = new GameObject("BoundaryAdBoards");
+
+            int numBoards = 24;
+            float radius = 26f;
+
+            for (int i = 0; i < numBoards; i++)
+            {
+                float angle = i * (360f / numBoards) * Mathf.Deg2Rad;
+                Vector3 pos = new Vector3(Mathf.Sin(angle) * radius, 0.4f, Mathf.Cos(angle) * radius - 3f);
+
+                GameObject board = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                board.name = $"AdBoard_{i}";
+                board.transform.SetParent(boardsGroup.transform);
+                board.transform.position = pos;
+                board.transform.localScale = new Vector3(4f, 0.8f, 0.2f);
+                board.transform.rotation = Quaternion.LookRotation(new Vector3(0f, 0.4f, -3f) - pos);
+                board.GetComponent<Renderer>().sharedMaterial = (i % 2 == 0) ? mrfRedMaterial : indiaJerseyMaterial;
+            }
         }
 
         private StumpGroup BuildStumps(Vector3 basePos, string name)
@@ -210,38 +297,196 @@ namespace CricSense
             return stumpGroup;
         }
 
-        private BatController BuildCricketBat()
+        private BatController BuildMRFCricketBat()
         {
-            GameObject batGroup = new GameObject("3D_Bat_Group");
+            GameObject batGroup = new GameObject("3D_MRF_Bat_Group");
             BatController batCtrl = batGroup.AddComponent<BatController>();
 
-            // Handle
+            // Handle (Dark grey cane handle)
             GameObject handle = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             handle.name = "BatHandle";
             handle.transform.SetParent(batGroup.transform);
             handle.transform.localPosition = new Vector3(0f, 0.45f, 0f);
             handle.transform.localScale = new Vector3(0.04f, 0.25f, 0.04f);
 
-            // Grip Ring
+            // MRF Red Grip Ring Accent
             GameObject ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            ring.name = "GripRing";
+            ring.name = "MRF_GripRing";
             ring.transform.SetParent(batGroup.transform);
             ring.transform.localPosition = new Vector3(0f, 0.25f, 0f);
-            ring.transform.localScale = new Vector3(0.05f, 0.015f, 0.05f);
+            ring.transform.localScale = new Vector3(0.05f, 0.018f, 0.05f);
+            ring.GetComponent<Renderer>().sharedMaterial = mrfRedMaterial;
 
-            // Blade
+            // Curved English Willow Blade
             GameObject blade = GameObject.CreatePrimitive(PrimitiveType.Cube);
             blade.name = "BatBlade";
             blade.transform.SetParent(batGroup.transform);
             blade.transform.localPosition = new Vector3(0f, -0.15f, 0f);
-            blade.transform.localScale = new Vector3(0.12f, 0.70f, 0.05f);
+            blade.transform.localScale = new Vector3(0.12f, 0.72f, 0.05f);
             blade.GetComponent<Renderer>().sharedMaterial = woodMaterial;
+
+            // MRF Genius Sticker Decal Top Header
+            GameObject mrfSticker = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            mrfSticker.name = "MRF_Genius_Sticker";
+            mrfSticker.transform.SetParent(blade.transform);
+            mrfSticker.transform.localPosition = new Vector3(0f, 0.35f, -0.52f);
+            mrfSticker.transform.localScale = new Vector3(0.95f, 0.25f, 0.06f);
+            mrfSticker.GetComponent<Renderer>().sharedMaterial = mrfRedMaterial;
 
             // Add BoxCollider trigger for bat face
             BoxCollider col = blade.GetComponent<BoxCollider>();
             col.isTrigger = true;
 
             return batCtrl;
+        }
+
+        private void BuildViratKohliBatsman(BatController bat)
+        {
+            if (GameObject.Find("ViratKohli_Batsman") != null) return;
+
+            GameObject playerObj = new GameObject("ViratKohli_Batsman");
+            playerObj.transform.position = bat.transform.position + new Vector3(0.05f, 0f, 0.08f);
+
+            PlayerAnimator animator = playerObj.AddComponent<PlayerAnimator>();
+            animator.batController = bat;
+
+            // 1. Torso & Team India Navy Blue Jersey (#18)
+            GameObject torso = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            torso.name = "JerseyTorso";
+            torso.transform.SetParent(playerObj.transform);
+            torso.transform.localPosition = new Vector3(0f, 1.05f, 0f);
+            torso.transform.localScale = new Vector3(0.38f, 0.50f, 0.22f);
+            torso.GetComponent<Renderer>().sharedMaterial = indiaJerseyMaterial;
+            animator.torsoTransform = torso.transform;
+
+            // Orange Jersey Trim Accent
+            GameObject trim = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            trim.name = "OrangeTrim";
+            trim.transform.SetParent(torso.transform);
+            trim.transform.localPosition = new Vector3(0f, 0.45f, 0f);
+            trim.transform.localScale = new Vector3(1.02f, 0.10f, 1.02f);
+            trim.GetComponent<Renderer>().sharedMaterial = mrfRedMaterial;
+
+            // 2. Head & Team India Blue Helmet
+            GameObject head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            head.name = "Head";
+            head.transform.SetParent(playerObj.transform);
+            head.transform.localPosition = new Vector3(0f, 1.45f, 0f);
+            head.transform.localScale = new Vector3(0.22f, 0.22f, 0.22f);
+            animator.headTransform = head.transform;
+
+            GameObject helmet = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            helmet.name = "IndiaHelmet";
+            helmet.transform.SetParent(head.transform);
+            helmet.transform.localPosition = new Vector3(0f, 0.04f, 0f);
+            helmet.transform.localScale = new Vector3(1.08f, 1.08f, 1.08f);
+            helmet.GetComponent<Renderer>().sharedMaterial = helmetNavyMaterial;
+
+            // Metallic Silver Visor Grille
+            GameObject visor = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            visor.name = "VisorGrille";
+            visor.transform.SetParent(helmet.transform);
+            visor.transform.localPosition = new Vector3(0f, -0.15f, -0.45f);
+            visor.transform.localScale = new Vector3(0.85f, 0.25f, 0.10f);
+            visor.GetComponent<Renderer>().sharedMaterial = whiteLineMaterial;
+
+            // 3. Batting Pads on Legs
+            for (int i = -1; i <= 1; i += 2)
+            {
+                float legX = i * 0.11f;
+                GameObject leg = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                leg.name = $"Leg_{i}";
+                leg.transform.SetParent(playerObj.transform);
+                leg.transform.localPosition = new Vector3(legX, 0.40f, 0f);
+                leg.transform.localScale = new Vector3(0.12f, 0.40f, 0.12f);
+
+                // White Protective Pad
+                GameObject pad = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                pad.name = $"BattingPad_{i}";
+                pad.transform.SetParent(leg.transform);
+                pad.transform.localPosition = new Vector3(0f, 0.05f, -0.4f);
+                pad.transform.localScale = new Vector3(1.2f, 1.1f, 0.6f);
+                pad.GetComponent<Renderer>().sharedMaterial = padWhiteMaterial;
+
+                if (i == -1) animator.leftLegTransform = leg.transform;
+                else animator.rightLegTransform = leg.transform;
+            }
+
+            // 4. Arms & White Batting Gloves
+            for (int i = -1; i <= 1; i += 2)
+            {
+                float armX = i * 0.24f;
+                GameObject arm = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                arm.name = $"Arm_{i}";
+                arm.transform.SetParent(playerObj.transform);
+                arm.transform.localPosition = new Vector3(armX, 1.05f, 0f);
+                arm.transform.localScale = new Vector3(0.08f, 0.25f, 0.08f);
+                arm.GetComponent<Renderer>().sharedMaterial = indiaJerseyMaterial;
+
+                // White Batting Glove
+                GameObject glove = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                glove.name = $"BattingGlove_{i}";
+                glove.transform.SetParent(arm.transform);
+                glove.transform.localPosition = new Vector3(0f, -0.9f, 0f);
+                glove.transform.localScale = new Vector3(1.4f, 0.5f, 1.4f);
+                glove.GetComponent<Renderer>().sharedMaterial = padWhiteMaterial;
+
+                if (i == -1) animator.leftArmTransform = arm.transform;
+                else animator.rightArmTransform = arm.transform;
+            }
+
+            // Parent Bat to Batsman Player
+            bat.transform.SetParent(playerObj.transform);
+        }
+
+        private void Build3DBowler(BowlingMachine machine)
+        {
+            if (GameObject.Find("India_Bowler") != null) return;
+
+            GameObject bowlerObj = new GameObject("India_Bowler");
+            bowlerObj.transform.position = new Vector3(0f, 0f, -18.0f);
+
+            BowlerAnimator animator = bowlerObj.AddComponent<BowlerAnimator>();
+            animator.bowlingMachine = machine;
+
+            // Torso (India Blue)
+            GameObject torso = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            torso.name = "BowlerTorso";
+            torso.transform.SetParent(bowlerObj.transform);
+            torso.transform.localPosition = new Vector3(0f, 1.05f, 0f);
+            torso.transform.localScale = new Vector3(0.36f, 0.50f, 0.20f);
+            torso.GetComponent<Renderer>().sharedMaterial = indiaJerseyMaterial;
+
+            // Head
+            GameObject head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            head.name = "BowlerHead";
+            head.transform.SetParent(bowlerObj.transform);
+            head.transform.localPosition = new Vector3(0f, 1.45f, 0f);
+            head.transform.localScale = new Vector3(0.20f, 0.20f, 0.20f);
+
+            // Bowling Arm
+            GameObject arm = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            arm.name = "BowlingArm";
+            arm.transform.SetParent(bowlerObj.transform);
+            arm.transform.localPosition = new Vector3(0.22f, 1.15f, 0f);
+            arm.transform.localScale = new Vector3(0.08f, 0.28f, 0.08f);
+            arm.GetComponent<Renderer>().sharedMaterial = indiaJerseyMaterial;
+            animator.bowlingArmTransform = arm.transform;
+
+            // Legs
+            for (int i = -1; i <= 1; i += 2)
+            {
+                float legX = i * 0.10f;
+                GameObject leg = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                leg.name = $"BowlerLeg_{i}";
+                leg.transform.SetParent(bowlerObj.transform);
+                leg.transform.localPosition = new Vector3(legX, 0.40f, 0f);
+                leg.transform.localScale = new Vector3(0.10f, 0.40f, 0.10f);
+                leg.GetComponent<Renderer>().sharedMaterial = indiaJerseyMaterial;
+
+                if (i == -1) animator.leftLegTransform = leg.transform;
+                else animator.rightLegTransform = leg.transform;
+            }
         }
 
         private BowlingMachine BuildBowlingMachine()

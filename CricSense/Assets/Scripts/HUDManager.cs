@@ -41,7 +41,12 @@ namespace CricSense
 
             if (GUI.Button(new Rect(16, btnY, 180, 44), "🎾 BOWL NEXT BALL", btnStyle))
             {
-                if (GameManager.Instance != null && GameManager.Instance.bowlingMachine != null)
+                BowlerAnimator bowlerAnim = FindAnyObjectByType<BowlerAnimator>();
+                if (bowlerAnim != null)
+                {
+                    bowlerAnim.TriggerBowlingRunUp();
+                }
+                else if (GameManager.Instance != null && GameManager.Instance.bowlingMachine != null)
                 {
                     GameManager.Instance.bowlingMachine.BowlBall();
                 }

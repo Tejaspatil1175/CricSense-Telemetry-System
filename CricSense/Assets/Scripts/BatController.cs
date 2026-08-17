@@ -1,4 +1,7 @@
 using UnityEngine;
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 
 namespace CricSense
 {
@@ -109,14 +112,35 @@ namespace CricSense
 
         /// <summary>
         /// Local Mouse & Keyboard controls for rapid in-editor testing without physical phone.
+        /// Compatible with both New Input System package and legacy Input Manager.
         /// </summary>
         private void HandleLocalEditorControls()
         {
-            // Mouse Drag controls pitch (X) and yaw (Y)
-            if (Input.GetMouseButton(0))
+            bool isMousePressed = false;
+            bool isSpacePressed = false;
+            Vector2 currentMousePos = Vector2.zero;
+
+#if ENABLE_INPUT_SYSTEM
+            if (Mouse.current != null)
             {
-                float deltaX = (Input.mousePosition.x - lastMouseX) * 0.5f;
-                float deltaY = (Input.mousePosition.y - lastMouseY) * 0.5f;
+                isMousePressed = Mouse.current.leftButton.isPressed;
+                currentMousePos = Mouse.current.position.ReadValue();
+            }
+            if (Keyboard.current != null)
+            {
+                isSpacePressed = Keyboard.current.spaceKey.isPressed;
+            }
+#else
+            isMousePressed = Input.GetMouseButton(0);
+            isSpacePressed = Input.GetKey(KeyCode.Space);
+            currentMousePos = Input.mousePosition;
+#endif
+
+            // Mouse Drag controls pitch (X) and yaw (Y)
+            if (isMousePressed)
+            {
+                float deltaX = (currentMousePos.x - lastMouseX) * 0.5f;
+                float deltaY = (currentMousePos.y - lastMouseY) * 0.5f;
 
                 Vector3 currentEuler = rawTelemetryQuaternion.eulerAngles;
                 float pitch = currentEuler.x - deltaY;
@@ -124,7 +148,7 @@ namespace CricSense
 
                 rawTelemetryQuaternion = Quaternion.Euler(pitch, yaw, 0f);
             }
-            else if (Input.GetKey(KeyCode.Space))
+            else if (isSpacePressed)
             {
                 // Spacebar swing trigger animation simulation
                 float swingT = Mathf.PingPong(Time.time * 6f, 1f);
@@ -134,8 +158,8 @@ namespace CricSense
                 rawTelemetryQuaternion = Quaternion.Euler(pitch, yaw, 0f);
             }
 
-            lastMouseX = Input.mousePosition.x;
-            lastMouseY = Input.mousePosition.y;
+            lastMouseX = currentMousePos.x;
+            lastMouseY = currentMousePos.y;
         }
     }
 }
