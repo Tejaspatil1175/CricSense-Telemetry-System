@@ -27,34 +27,38 @@ function processTelemetry(data, clientIp, port) {
   const gyro = data.gyro || { x: 0, y: 0, z: 0 };
   const motion = data.motion || { alpha: 0, beta: 0, gamma: 0, orientation: 0 };
 
-  process.stdout.write('\x1Bc');
-  console.log('================================================================');
-  console.log('            CRICSENSE PC/LAPTOP TELEMETRY RECEIVER              ');
-  console.log('================================================================');
-  console.log(` Status          : MOBILE CONNECTED (${state.selectedMethod.toUpperCase()})`);
-  console.log(` Web Dashboard   : http://localhost:${port}`);
-  console.log(` Controller IP   : ${clientIp}`);
-  console.log(` Packets Received: ${state.packetCount} | Data Rate: ${state.packetsPerSecond} Hz`);
-  console.log(` Packet Latency  : ${latency} ms`);
-  console.log('----------------------------------------------------------------');
-  console.log(` 🏏 BAT PHYSICS MOTION ENGINE`);
-  console.log(`   Estimated Speed : ${analytics.speedKmh} km/h (${analytics.speedMph} mph) | Max Peak: ${analytics.maxSpeedKmh} km/h`);
-  console.log(`   Bat Face        : ${analytics.faceAlignment}`);
-  console.log(`   Bat Plane       : ${analytics.batPlane} (${analytics.pitchAngleDeg}°)`);
-  console.log(`   Detected Shot   : ${analytics.detectedShot}`);
-  console.log(`   Impact Alert    : ${analytics.isImpact ? '💥 IMPACT DETECTED!' : 'Normal Motion'}`);
-  console.log('----------------------------------------------------------------');
-  console.log(` ACCELEROMETER (g-force)`);
-  console.log(`   X: ${(accel.x || 0).toFixed(4)} g  |  Y: ${(accel.y || 0).toFixed(4)} g  |  Z: ${(accel.z || 0).toFixed(4)} g`);
-  console.log(`   Total Acceleration Magnitude: ${analytics.totalG} g`);
-  console.log('----------------------------------------------------------------');
-  console.log(` GYROSCOPE (rad/s)`);
-  console.log(`   Pitch (X): ${(gyro.x || 0).toFixed(4)}  |  Roll (Y): ${(gyro.y || 0).toFixed(4)}  |  Yaw (Z): ${(gyro.z || 0).toFixed(4)}`);
-  console.log('----------------------------------------------------------------');
-  console.log(` ROTATION / ORIENTATION`);
-  console.log(`   Alpha: ${(motion.alpha || 0).toFixed(4)} rad | Beta: ${(motion.beta || 0).toFixed(4)} rad | Gamma: ${(motion.gamma || 0).toFixed(4)} rad`);
-  console.log('================================================================');
-  console.log(' Press Ctrl+C to stop laptop receiver server.');
+  // Throttle terminal clear & console output to avoid CPU/terminal buffer latency
+  if (!state.lastConsoleLogTime || (now - state.lastConsoleLogTime > 400)) {
+    state.lastConsoleLogTime = now;
+    process.stdout.write('\x1Bc');
+    console.log('================================================================');
+    console.log('            CRICSENSE PC/LAPTOP TELEMETRY RECEIVER              ');
+    console.log('================================================================');
+    console.log(` Status          : MOBILE CONNECTED (${state.selectedMethod.toUpperCase()})`);
+    console.log(` Web Dashboard   : http://localhost:${port}`);
+    console.log(` Controller IP   : ${clientIp}`);
+    console.log(` Packets Received: ${state.packetCount} | Data Rate: ${state.packetsPerSecond} Hz`);
+    console.log(` Packet Latency  : ${latency} ms`);
+    console.log('----------------------------------------------------------------');
+    console.log(` 🏏 BAT PHYSICS MOTION ENGINE`);
+    console.log(`   Estimated Speed : ${analytics.speedKmh} km/h (${analytics.speedMph} mph) | Max Peak: ${analytics.maxSpeedKmh} km/h`);
+    console.log(`   Bat Face        : ${analytics.faceAlignment}`);
+    console.log(`   Bat Plane       : ${analytics.batPlane} (${analytics.pitchAngleDeg}°)`);
+    console.log(`   Detected Shot   : ${analytics.detectedShot}`);
+    console.log(`   Impact Alert    : ${analytics.isImpact ? '💥 IMPACT DETECTED!' : 'Normal Motion'}`);
+    console.log('----------------------------------------------------------------');
+    console.log(` ACCELEROMETER (g-force)`);
+    console.log(`   X: ${(accel.x || 0).toFixed(4)} g  |  Y: ${(accel.y || 0).toFixed(4)} g  |  Z: ${(accel.z || 0).toFixed(4)} g`);
+    console.log(`   Total Acceleration Magnitude: ${analytics.totalG} g`);
+    console.log('----------------------------------------------------------------');
+    console.log(` GYROSCOPE (rad/s)`);
+    console.log(`   Pitch (X): ${(gyro.x || 0).toFixed(4)}  |  Roll (Y): ${(gyro.y || 0).toFixed(4)}  |  Yaw (Z): ${(gyro.z || 0).toFixed(4)}`);
+    console.log('----------------------------------------------------------------');
+    console.log(` ROTATION / ORIENTATION`);
+    console.log(`   Alpha: ${(motion.alpha || 0).toFixed(4)} rad | Beta: ${(motion.beta || 0).toFixed(4)} rad | Gamma: ${(motion.gamma || 0).toFixed(4)} rad`);
+    console.log('================================================================');
+    console.log(' Press Ctrl+C to stop laptop receiver server.');
+  }
 }
 
 function handleHttpRequest(req, res, publicDir, port) {

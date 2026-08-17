@@ -10,6 +10,8 @@ let trailPoints = [];
 const MAX_TRAIL_POINTS = 50;
 
 let calibrationQuat = null;
+let targetBatQuat = null;
+let isWebSocketActive = false;
 let lastRawMotion = { alpha: 0, beta: 0, gamma: 0 };
 let lastRawQuat = { w: 1, x: 0, y: 0, z: 0 };
 let lastPhysicsData = null;
@@ -137,7 +139,7 @@ function initGame3D() {
   const faceGeo = new THREE.BoxGeometry(0.20, 0.8, 0.072);
   const faceMat = new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.2 });
   const batFace = new THREE.Mesh(faceGeo, faceMat);
-  batFace.position.y = -0.45;
+  batFace.position.set(0, -0.45, -0.002); // Flat face points toward Bowler (-Z)
   batGroup.add(batFace);
 
   const handleGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.42, 16);
@@ -153,7 +155,7 @@ function initGame3D() {
   handleRing.position.y = 0.05;
   batGroup.add(handleRing);
 
-  batGroup.position.set(0, 0.4, 2.7);
+  batGroup.position.set(-0.28, 0.4, 2.7);
   scene.add(batGroup);
 
   // 7. 3D Red Leather Cricket Ball
@@ -163,8 +165,9 @@ function initGame3D() {
 
   const seamGeo = new THREE.TorusGeometry(0.091, 0.006, 8, 32);
   const seamMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  const seam = new THREE.Mesh(seamGeo, seamMat);
-  ballMesh.add(seam);
+  const ballSeam = new THREE.Mesh(seamGeo, seamMat);
+  ballSeam.rotation.x = Math.PI / 2;
+  ballMesh.add(ballSeam);
 
   ballMesh.position.copy(ballPos);
   scene.add(ballMesh);
@@ -182,7 +185,9 @@ function initGame3D() {
   function animate() {
     requestAnimationFrame(animate);
 
-    if (batGroup && !window.hasReceivedTelemetry) {
+    if (batGroup && targetBatQuat) {
+      batGroup.quaternion.slerp(targetBatQuat, 0.85);
+    } else if (batGroup && !window.hasReceivedTelemetry) {
       const t = Date.now() * 0.001;
       batGroup.rotation.y = Math.sin(t * 0.8) * 0.15;
       batGroup.rotation.z = Math.cos(t * 0.5) * 0.05;
@@ -202,6 +207,7 @@ function initGame3D() {
     renderer.setSize(w, h);
   });
 
+  // Connect WebSockets
   connectGameWebSocket();
 }
 
@@ -213,8 +219,8 @@ function setCameraMode(mode) {
     camera.position.set(0, 2.2, 5.5);
     camera.lookAt(0, 0.4, -1.0);
   } else if (mode === 'batsmanEye') {
-    camera.position.set(0, 1.2, 2.9);
-    camera.lookAt(0, 0.6, -4.5);
+    camera.position.set(-0.35, 1.25, 2.85);
+    camera.lookAt(0.05, 0.55, -4.5);
   } else if (mode === 'bowlerCam') {
     camera.position.set(0, 2.0, -4.5);
     camera.lookAt(0, 0.4, 2.8);
@@ -570,13 +576,15 @@ function update3DBatOrientation(alpha, beta, gamma, quat) {
   if (!calibrationQuat) {
     if (window.stadiumDataset && window.stadiumDataset.bowlerDir && window.stadiumDataset.bowlerDir.quaternion) {
       const q = window.stadiumDataset.bowlerDir.quaternion;
-      calibrationQuat = new THREE.Quaternion(q.x, q.y, q.z, q.w);
+      calibrationQuat = new THREE.Quaternion(q.x || 0, q.y || 0, q.z || 0, q.w || 1);
     } else {
       calibrationQuat = new THREE.Quaternion(-0.5025145861231434, 0.8636807677552061, 0.021787390476834916, 0.032556593179782094);
     }
   }
 
   const relativeQuat = calibrationQuat.clone().invert().multiply(rawQuat);
+  if (!targetBatQuat) targetBatQuat = new THREE.Quaternion();
+  targetBatQuat.copy(relativeQuat);
   batGroup.quaternion.copy(relativeQuat);
 
   // Update Swing Trail
@@ -604,9 +612,9 @@ function calibrateBatOrientation() {
     calibrationQuat = new THREE.Quaternion(lastRawQuat.x || 0, lastRawQuat.y || 0, lastRawQuat.z || 0, lastRawQuat.w || 1);
   } else {
     const rawEuler = new THREE.Euler(
-      lastRawMotion.beta || 0,
-      lastRawMotion.gamma || 0,
-      -(lastRawMotion.alpha || 0),
+      beta || 0,
+      gamma || 0,
+      -(alpha || 0),
       'XYZ'
     );
     calibrationQuat = new THREE.Quaternion().setFromEuler(rawEuler);
@@ -615,11 +623,8 @@ function calibrateBatOrientation() {
   if (trailLine && trailLine.geometry) {
     trailLine.geometry.setDrawRange(0, 0);
   }
-  const btn = document.getElementById('calibrateBtn');
-  if (btn) {
-    const original = btn.innerText;
-    btn.innerText = '✅ Neutral Set!';
-    setTimeout(() => { btn.innerText = original; }, 900);
+  if (typeof showTimingBadge === 'function') {
+    showTimingBadge('🎯 Bat Neutral Orientation Calibrated!', 'timing-perfect');
   }
 }
 
@@ -630,10 +635,12 @@ function connectGameWebSocket() {
   try {
     const ws = new WebSocket(wsUrl);
     ws.onopen = () => {
+      isWebSocketActive = true;
       ws.send(JSON.stringify({ type: 'web_dashboard_register' }));
     };
     ws.onmessage = (event) => {
       try {
+        isWebSocketActive = true;
         const data = JSON.parse(event.data);
         if (data.type === 'telemetry' || data.accel) {
           if (data.physics) lastPhysicsData = data.physics;
@@ -643,12 +650,15 @@ function connectGameWebSocket() {
           }
           if (data.quat) lastRawQuat = data.quat;
         }
-      } catch (e) {}
+      } catch (e) { }
     };
-  } catch (e) {}
+    ws.onclose = () => { isWebSocketActive = false; };
+    ws.onerror = () => { isWebSocketActive = false; };
+  } catch (e) { }
 
-  // Fallback Polling
+  // Fallback Polling (Only runs if WebSockets are inactive)
   setInterval(() => {
+    if (isWebSocketActive) return;
     fetch('/api/status')
       .then(res => res.json())
       .then(data => {
@@ -662,7 +672,7 @@ function connectGameWebSocket() {
           if (payload.quat) lastRawQuat = payload.quat;
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, 300);
 }
 

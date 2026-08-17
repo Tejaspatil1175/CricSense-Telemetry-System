@@ -18,14 +18,14 @@ try {
     calibrationProfile = { ...calibrationProfile, ...parsed };
     console.log('[PHYSICS ENGINE] Loaded custom stadium calibration dataset successfully!');
   }
-} catch (e) {}
+} catch (e) { }
 
 function updateCalibrationProfile(profile) {
   if (profile) {
     calibrationProfile = { ...calibrationProfile, ...profile };
     try {
       fs.writeFileSync(calFilePath, JSON.stringify(calibrationProfile, null, 2));
-    } catch (e) {}
+    } catch (e) { }
   }
 }
 
@@ -62,10 +62,10 @@ function analyzeBatPhysics(data) {
   const rawBetaDeg = (motion.beta || 0) * (180 / Math.PI);
   const betaDeg = rawBetaDeg - (calibrationProfile.verticalOffsetDeg || 0);
   const gammaDeg = ((motion.gamma || 0) * (180 / Math.PI)) - (calibrationProfile.rollCorrectionDeg || 0);
-  
-  // Calculate heading relative to Bowler Direction
+
+  // Calculate heading relative to Bowler Direction (0 deg = Towards Bowler)
   const rawAlphaRad = motion.alpha || 0;
-  const relAlphaRad = rawAlphaRad - bowlerAlpha;
+  let relAlphaRad = (rawAlphaRad - bowlerAlpha) + Math.PI;
   let relAlphaDeg = relAlphaRad * (180 / Math.PI);
   while (relAlphaDeg > 180) relAlphaDeg -= 360;
   while (relAlphaDeg < -180) relAlphaDeg += 360;

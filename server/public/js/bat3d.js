@@ -78,7 +78,7 @@ function init3DBat() {
 
   // White Crease Markings
   const creaseMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  
+
   // Batsman Crease (z = 2.8)
   const batCrease = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.065, 0.08), creaseMat);
   batCrease.position.set(0, -0.51, 2.8);
@@ -130,21 +130,21 @@ function init3DBat() {
   handleRing.position.y = 0.05;
   batGroup.add(handleRing);
 
-  // Position 3D Bat at Batsman Stance Crease
-  batGroup.position.set(0, 0.4, 2.7);
+  // Position 3D Bat at Right-Handed Batsman Stance Crease
+  batGroup.position.set(0.3, 0.4, 2.7);
   scene.add(batGroup);
 
   // 5. 3D Red Cricket Ball Mesh
   const ballGeo = new THREE.SphereGeometry(0.09, 24, 24);
   const ballMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.3 });
   ballMesh = new THREE.Mesh(ballGeo, ballMat);
-  
+
   // White seam torus
   const seamGeo = new THREE.TorusGeometry(0.091, 0.006, 8, 24);
   const seamMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
   const seam = new THREE.Mesh(seamGeo, seamMat);
   ballMesh.add(seam);
-  
+
   ballMesh.position.copy(ballPos);
   scene.add(ballMesh);
 
@@ -378,7 +378,7 @@ function checkBatBallCollision() {
     // Calculate Hit Trajectory Vector based on Swing Dynamics
     const relHeading = lastPhysicsData ? (lastPhysicsData.relHeadingDeg || 0) : 0;
     const faceAngle = lastPhysicsData ? (lastPhysicsData.faceAngleDeg || 0) : 0;
-    
+
     // Direction angle
     const hitRad = (relHeading + faceAngle) * (Math.PI / 180);
     const speedFactor = Math.min(Math.max(swingSpeed / 20.0, 0.8), 2.2);
@@ -434,7 +434,7 @@ function update3DBatOrientation(alpha, beta, gamma, quat) {
   if (!calibrationQuat) {
     if (window.stadiumDataset && window.stadiumDataset.bowlerDir && window.stadiumDataset.bowlerDir.quaternion) {
       const q = window.stadiumDataset.bowlerDir.quaternion;
-      calibrationQuat = new THREE.Quaternion(q.x, q.y, q.z, q.w);
+      calibrationQuat = new THREE.Quaternion(q.x || 0, q.y || 0, q.z || 0, q.w || 1);
     } else {
       calibrationQuat = new THREE.Quaternion(-0.5025145861231434, 0.8636807677552061, 0.021787390476834916, 0.032556593179782094);
     }
@@ -469,9 +469,9 @@ function calibrateBatOrientation() {
     calibrationQuat = new THREE.Quaternion(lastRawQuat.x || 0, lastRawQuat.y || 0, lastRawQuat.z || 0, lastRawQuat.w || 1);
   } else {
     const rawEuler = new THREE.Euler(
-      lastRawMotion.beta || 0,
-      lastRawMotion.gamma || 0,
-      -(lastRawMotion.alpha || 0),
+      beta || 0,
+      gamma || 0,
+      -(alpha || 0),
       'XYZ'
     );
     calibrationQuat = new THREE.Quaternion().setFromEuler(rawEuler);
