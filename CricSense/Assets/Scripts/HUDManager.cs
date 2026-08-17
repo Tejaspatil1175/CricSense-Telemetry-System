@@ -7,6 +7,8 @@ namespace CricSense
     /// </summary>
     public class HUDManager : MonoBehaviour
     {
+        public bool showHUD = false;
+
         private GUIStyle headerStyle;
         private GUIStyle bannerStyle;
         private GUIStyle btnStyle;
@@ -14,6 +16,8 @@ namespace CricSense
 
         private void OnGUI()
         {
+            if (!showHUD) return;
+
             InitStyles();
 
             // 1. Scorecard HUD Top Bar

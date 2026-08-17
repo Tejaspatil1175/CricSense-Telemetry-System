@@ -65,13 +65,13 @@ namespace CricSense
             switch (mode)
             {
                 case CameraMode.BatsmanEye:
-                    targetPosition = new Vector3(-0.35f, 1.25f, 2.85f);
-                    targetRotation = Quaternion.LookRotation(new Vector3(0.05f, 0.55f, -4.5f) - targetPosition);
+                    targetPosition = new Vector3(-0.45f, 1.65f, 4.45f);
+                    targetRotation = Quaternion.LookRotation(new Vector3(0.05f, 0.45f, -10.0f) - targetPosition);
                     break;
 
                 case CameraMode.BroadcastCam:
-                    targetPosition = new Vector3(0.0f, 2.2f, 5.5f);
-                    targetRotation = Quaternion.LookRotation(new Vector3(0.0f, 0.4f, -1.0f) - targetPosition);
+                    targetPosition = new Vector3(0.0f, 2.5f, 6.2f);
+                    targetRotation = Quaternion.LookRotation(new Vector3(0.0f, 0.3f, -10.0f) - targetPosition);
                     break;
 
                 case CameraMode.BowlerCam:
