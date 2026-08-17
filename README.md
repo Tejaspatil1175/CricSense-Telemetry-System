@@ -4,6 +4,24 @@ A professional high-precision motion tracking system and real-time telemetry pip
 
 ---
 
+## 📸 Application Previews & Screenshots
+
+### 💻 PC / Laptop Telemetry Engine & 3D Cricket Match Arena
+| Web Receiver Dashboard | 3D Stadium Cricket Match Arena |
+| :---: | :---: |
+| ![Web Receiver Dashboard](preview/web%20home%20page.png) | ![3D Cricket Match Arena](preview/games.png) |
+
+### 📱 Mobile Bat Controller Application
+| Step 1 & 2 Connection Hub | 3D Bat Stance & Physics Engine |
+| :---: | :---: |
+| ![Mobile Connection Hub](preview/home.jpeg) | ![3D Bat Stance](preview/batpage.jpeg) |
+
+| Real-Time Telemetry Monitor | Telemetry & Calibration Settings |
+| :---: | :---: |
+| ![Live Telemetry Metrics](preview/telementary.jpeg) | ![Settings & Calibration](preview/setings.jpeg) |
+
+---
+
 ## Tech Stack & Core Technologies
 
 ![React Native](https://img.shields.io/badge/React_Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
