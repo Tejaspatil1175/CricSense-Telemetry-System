@@ -30,9 +30,9 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" backgroundColor="#FFFFFF" />
 
-      {/* Top Header with Account Icon */}
+      {/* Top Header with Safe Area spacing for battery/charging bar */}
       <Header onAccountPress={handleAccountPress} connectionState={sensorData.connectionState} />
 
       {/* Main Content Area */}
@@ -76,9 +76,10 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0d14',
+    backgroundColor: '#FFFFFF',
   },
   content: {
     flex: 1,
+    backgroundColor: '#F8FAFC',
   },
 });

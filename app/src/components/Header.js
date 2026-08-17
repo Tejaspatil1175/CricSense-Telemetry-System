@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, StatusBar, Platform } from 'react-native';
 
 export function Header({ onAccountPress, connectionState = 'disconnected' }) {
   const isConnected = connectionState === 'connected';
@@ -7,7 +7,7 @@ export function Header({ onAccountPress, connectionState = 'disconnected' }) {
   return (
     <View style={styles.header}>
       <View style={styles.leftContainer}>
-        <Text style={styles.title}>CricSense</Text>
+        <Text style={styles.title}>CricSense 🏏</Text>
         <Text style={styles.subtitle}>Bat Controller Telemetry</Text>
       </View>
 
@@ -31,28 +31,34 @@ export function Header({ onAccountPress, connectionState = 'disconnected' }) {
 
 const styles = StyleSheet.create({
   header: {
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) + 8 : 12,
+    paddingBottom: 14,
     paddingHorizontal: 16,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#1e293b',
+    borderBottomColor: '#E2E8F0',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    elevation: 2,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
   leftContainer: {
     flex: 1,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#38bdf8',
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#059669',
     letterSpacing: 0.5,
   },
   subtitle: {
     fontSize: 11,
-    color: '#94a3b8',
+    fontWeight: '600',
+    color: '#64748B',
     marginTop: 1,
   },
   rightContainer: {
@@ -63,49 +69,49 @@ const styles = StyleSheet.create({
   connectionBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#132e27',
-    borderColor: '#00e699',
+    backgroundColor: '#ECFDF5',
+    borderColor: '#10B981',
     borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    gap: 6,
   },
   disconnectedBadge: {
-    backgroundColor: '#3b2d13',
-    borderColor: '#eab308',
+    backgroundColor: '#FEF3C7',
+    borderColor: '#F59E0B',
   },
   statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#00e699',
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#10B981',
   },
   yellowDot: {
-    backgroundColor: '#eab308',
+    backgroundColor: '#F59E0B',
   },
   connectionText: {
-    color: '#00e699',
+    color: '#047857',
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   yellowText: {
-    color: '#eab308',
+    color: '#B45309',
   },
   accountButton: {
     padding: 2,
   },
   avatarCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#38bdf8',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#10B981',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    color: '#0f172a',
-    fontWeight: '800',
-    fontSize: 12,
+    color: '#FFFFFF',
+    fontWeight: '900',
+    fontSize: 13,
   },
 });

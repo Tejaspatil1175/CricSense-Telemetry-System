@@ -96,51 +96,74 @@ export function HomeScreen({
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {/* Brand Logo & Web Connection Status Section */}
-      <View style={styles.logoContainer}>
-        <View style={styles.logoBadge}>
-          <Text style={styles.logoIcon}>🏏</Text>
-        </View>
-        <Text style={styles.logoTitle}>CricSense Bat Controller</Text>
+      {/* Title Section */}
+      <View style={styles.headerSection}>
+        <Text style={styles.badgeText}>CONNECTION HUB • 2 EASY STEPS</Text>
+        <Text style={styles.mainTitle}>Connect Bat Controller</Text>
+        <Text style={styles.subTitle}>
+          Follow the 2 simple steps below to pair your phone bat controller with your PC game
+        </Text>
+      </View>
 
-        {/* Status indicator directly under logo: GREEN if connected, YELLOW if not */}
-        <View style={[
-          styles.webStatusBadge,
-          connectionState === 'connected' ? styles.webStatusConnected : styles.webStatusYellow
-        ]}>
-          <View style={[
-            styles.statusDotSmall,
-            connectionState === 'connected' ? styles.dotGreen : styles.dotYellow
-          ]} />
-          <Text style={[
-            styles.webStatusText,
-            connectionState === 'connected' ? styles.textGreen : styles.textYellow
-          ]}>
-            {connectionState === 'connected' ? 'Connected to Web' : 'Not Connected to Web'}
+      {/* STEP 1: SCAN QR CODE TO GET PC IP */}
+      <TouchableOpacity
+        style={[
+          styles.methodCard,
+          styles.qrCard,
+          activeMethod === 'qr' && styles.activeMethodCard
+        ]}
+        onPress={handleOpenScanner}
+        activeOpacity={0.8}
+      >
+        <View style={styles.cardHeader}>
+          <View style={[styles.methodIconBadge, styles.qrIconBadge]}>
+            <Text style={styles.iconText}>📷</Text>
+          </View>
+          <View style={styles.methodTitleBox}>
+            <Text style={[styles.methodTag, styles.qrTag]}>STEP 1 • AUTO DISCOVERY</Text>
+            <Text style={styles.methodName}>Scan PC Screen QR Code</Text>
+          </View>
+        </View>
+
+        <Text style={styles.methodDesc}>
+          Scan the QR Code on your PC screen (<Text style={{ fontWeight: '800', color: '#059669' }}>http://localhost:8080</Text>) to automatically grab your PC IP address!
+        </Text>
+
+        <TouchableOpacity
+          style={styles.qrScanButton}
+          onPress={handleOpenScanner}
+        >
+          <Text style={styles.qrScanButtonText}>📷 Scan QR Code to Auto-Fetch IP</Text>
+        </TouchableOpacity>
+
+        {/* Current IP Address Display Box */}
+        <View style={{ marginTop: 14, backgroundColor: '#FFFFFF', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: '#10B981' }}>
+          <Text style={{ fontSize: 10, fontWeight: '900', color: '#059669', marginBottom: 4 }}>
+            CURRENT PC SERVER IP:
           </Text>
-        </View>
-
-        {/* Laptop Server IP / Link Input Box */}
-        <View style={styles.ipBoxHome}>
-          <Text style={styles.ipBoxLabel}>PC SERVER IP OR FULL LINK</Text>
           <TextInput
-            style={styles.ipInputHome}
+            style={{
+              fontSize: 14,
+              fontWeight: '800',
+              color: '#0F172A',
+              padding: 0,
+            }}
             value={serverIp}
             onChangeText={onChangeServerIp}
-            placeholder="http://192.168.31.53:8080 or 10.97.70.3"
-            placeholderTextColor="#64748b"
+            placeholder="e.g. 10.97.70.3 or 192.168.1.5"
+            placeholderTextColor="#94a3b8"
             autoCapitalize="none"
             autoCorrect={false}
           />
         </View>
-      </View>
+      </TouchableOpacity>
 
-      {/* Title Section */}
-      <View style={styles.headerSection}>
-        <Text style={styles.badgeText}>CONNECTION HUB new version</Text>
+      {/* STEP 2: CHOOSE CONNECTION METHOD */}
+      <View style={[styles.headerSection, { marginTop: 8 }]}>
+        <Text style={styles.badgeText}>STEP 2 • CHOOSE METHOD</Text>
         <Text style={styles.mainTitle}>Select Connection Method</Text>
         <Text style={styles.subTitle}>
-          Choose how to connect your bat sensor controller to your laptop game server
+          Pick your preferred stream protocol and tap Connect
         </Text>
       </View>
 
@@ -284,7 +307,7 @@ export function HomeScreen({
           </View>
 
           <Text style={styles.methodDesc}>
-            Direct wireless pairing via Bluetooth Low Energy (BLE). Ideal when no Wi-Fi router or USB cable is available.
+            Direct low-energy Bluetooth telemetry stream directly to laptop BLE receiver.
           </Text>
 
           <View style={styles.specsRow}>
@@ -309,38 +332,6 @@ export function HomeScreen({
             <Text style={[styles.connectButtonText, activeMethod === 'bluetooth' && connectionState === 'connected' && styles.connectButtonTextActive]}>
               {getButtonText('bluetooth', 'Connect via Bluetooth')}
             </Text>
-          </TouchableOpacity>
-        </TouchableOpacity>
-
-        {/* Method 4: QR Code Auto-Pairing */}
-        <TouchableOpacity
-          style={[
-            styles.methodCard,
-            styles.qrCard,
-            activeMethod === 'qr' && styles.activeMethodCard
-          ]}
-          onPress={handleOpenScanner}
-          activeOpacity={0.8}
-        >
-          <View style={styles.cardHeader}>
-            <View style={[styles.methodIconBadge, styles.qrIconBadge]}>
-              <Text style={styles.iconText}>📷</Text>
-            </View>
-            <View style={styles.methodTitleBox}>
-              <Text style={[styles.methodTag, styles.qrTag]}>METHOD 4 • INSTANT PAIRING</Text>
-              <Text style={styles.methodName}>Scan PC Screen QR Code</Text>
-            </View>
-          </View>
-
-          <Text style={styles.methodDesc}>
-            Point your phone camera at the QR Code displayed on your PC screen (http://localhost:8080) to automatically pair and stream telemetry instantly.
-          </Text>
-
-          <TouchableOpacity
-            style={styles.qrScanButton}
-            onPress={handleOpenScanner}
-          >
-            <Text style={styles.qrScanButtonText}>📷 Scan QR Code to Connect</Text>
           </TouchableOpacity>
         </TouchableOpacity>
 
@@ -378,42 +369,47 @@ const styles = StyleSheet.create({
   container: {
     padding: 16,
     gap: 16,
-    backgroundColor: '#0a0d14',
+    backgroundColor: '#F8FAFC',
   },
   headerSection: {
     marginBottom: 4,
   },
   badgeText: {
     fontSize: 10,
-    fontWeight: '800',
-    color: '#00e699',
+    fontWeight: '900',
+    color: '#059669',
     letterSpacing: 1.2,
     marginBottom: 4,
   },
   mainTitle: {
     fontSize: 22,
-    fontWeight: '800',
-    color: '#f8fafc',
+    fontWeight: '900',
+    color: '#0F172A',
     marginBottom: 4,
   },
   subTitle: {
     fontSize: 13,
-    color: '#94a3b8',
+    color: '#64748B',
     lineHeight: 18,
   },
   methodsList: {
     gap: 14,
   },
   methodCard: {
-    backgroundColor: '#111827',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 18,
     borderWidth: 1,
-    borderColor: '#1f2937',
+    borderColor: '#E2E8F0',
+    elevation: 2,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
   },
   activeMethodCard: {
-    borderColor: '#38bdf8',
-    backgroundColor: '#0f172a',
+    borderColor: '#10B981',
+    backgroundColor: '#ECFDF5',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -425,7 +421,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 12,
-    backgroundColor: '#1e293b',
+    backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -437,96 +433,101 @@ const styles = StyleSheet.create({
   },
   methodTag: {
     fontSize: 9,
-    fontWeight: '800',
-    color: '#38bdf8',
+    fontWeight: '900',
+    color: '#059669',
     letterSpacing: 0.8,
     marginBottom: 2,
   },
   methodName: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#f8fafc',
+    color: '#0F172A',
   },
   activeBadge: {
-    backgroundColor: '#132e27',
+    backgroundColor: '#D1E7DD',
     borderWidth: 1,
-    borderColor: '#00e699',
+    borderColor: '#10B981',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
   },
   connectingBadge: {
-    backgroundColor: '#3b2d13',
-    borderColor: '#eab308',
+    backgroundColor: '#FEF3C7',
+    borderColor: '#F59E0B',
   },
   activeBadgeText: {
-    color: '#00e699',
+    color: '#047857',
     fontSize: 10,
     fontWeight: '800',
   },
   methodDesc: {
     fontSize: 13,
-    color: '#94a3b8',
+    color: '#475569',
     lineHeight: 19,
     marginBottom: 14,
   },
   specsRow: {
     flexDirection: 'row',
-    backgroundColor: '#0a0d14',
+    backgroundColor: '#F8FAFC',
     borderRadius: 10,
     padding: 10,
     justifyContent: 'space-around',
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: '#1e293b',
+    borderColor: '#E2E8F0',
   },
   specItem: {
     alignItems: 'center',
   },
   specLabel: {
     fontSize: 10,
-    color: '#64748b',
+    color: '#64748B',
     marginBottom: 2,
   },
   specValue: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#f8fafc',
+    fontWeight: '800',
+    color: '#0F172A',
   },
   connectButton: {
-    backgroundColor: '#1e293b',
+    backgroundColor: '#F1F5F9',
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: 'center',
   },
   connectButtonActive: {
-    backgroundColor: '#38bdf8',
+    backgroundColor: '#10B981',
   },
   connectButtonText: {
-    color: '#38bdf8',
-    fontWeight: '700',
+    color: '#059669',
+    fontWeight: '800',
     fontSize: 13,
   },
   connectButtonTextActive: {
-    color: '#0f172a',
-    fontWeight: '800',
+    color: '#FFFFFF',
+    fontWeight: '900',
   },
   logoContainer: {
     alignItems: 'center',
-    backgroundColor: '#111827',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#1f2937',
+    borderColor: '#E2E8F0',
     marginBottom: 6,
+    elevation: 2,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
   },
   logoBadge: {
     width: 60,
     height: 60,
     borderRadius: 18,
-    backgroundColor: '#1e293b',
+    backgroundColor: '#ECFDF5',
     borderWidth: 1,
-    borderColor: '#38bdf8',
+    borderColor: '#10B981',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
@@ -536,8 +537,8 @@ const styles = StyleSheet.create({
   },
   logoTitle: {
     fontSize: 18,
-    fontWeight: '800',
-    color: '#f8fafc',
+    fontWeight: '900',
+    color: '#0F172A',
     letterSpacing: 0.5,
     marginBottom: 10,
   },
@@ -551,12 +552,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   webStatusConnected: {
-    backgroundColor: '#132e27',
-    borderColor: '#00e699',
+    backgroundColor: '#ECFDF5',
+    borderColor: '#10B981',
   },
   webStatusYellow: {
-    backgroundColor: '#3b2d13',
-    borderColor: '#eab308',
+    backgroundColor: '#FEF3C7',
+    borderColor: '#F59E0B',
   },
   statusDotSmall: {
     width: 8,
@@ -564,10 +565,10 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   dotGreen: {
-    backgroundColor: '#00e699',
+    backgroundColor: '#10B981',
   },
   dotYellow: {
-    backgroundColor: '#eab308',
+    backgroundColor: '#F59E0B',
   },
   webStatusText: {
     fontSize: 12,
@@ -575,35 +576,35 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   textGreen: {
-    color: '#00e699',
+    color: '#047857',
   },
   textYellow: {
-    color: '#eab308',
+    color: '#B45309',
   },
   qrCard: {
-    borderColor: '#eab308',
-    backgroundColor: '#17150c',
+    borderColor: '#10B981',
+    backgroundColor: '#ECFDF5',
   },
   qrIconBadge: {
-    backgroundColor: '#2e2510',
+    backgroundColor: '#D1E7DD',
   },
   qrTag: {
-    color: '#eab308',
+    color: '#059669',
   },
   qrScanButton: {
-    backgroundColor: '#eab308',
+    backgroundColor: '#10B981',
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
   },
   qrScanButtonText: {
-    color: '#0f172a',
-    fontWeight: '800',
+    color: '#FFFFFF',
+    fontWeight: '900',
     fontSize: 14,
   },
   cameraContainer: {
     flex: 1,
-    backgroundColor: '#0a0d14',
+    backgroundColor: '#0F172A',
   },
   cameraHeader: {
     flexDirection: 'row',
@@ -612,23 +613,23 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     paddingBottom: 16,
     paddingHorizontal: 20,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#1e293b',
+    borderBottomColor: '#E2E8F0',
   },
   cameraTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#f8fafc',
+    color: '#0F172A',
   },
   closeButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#1e293b',
+    backgroundColor: '#F1F5F9',
     borderRadius: 8,
   },
   closeButtonText: {
-    color: '#ef4444',
+    color: '#EF4444',
     fontWeight: '800',
     fontSize: 12,
   },
@@ -637,7 +638,7 @@ const styles = StyleSheet.create({
   },
   scannerOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(10, 13, 20, 0.6)',
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
@@ -647,17 +648,16 @@ const styles = StyleSheet.create({
     height: 240,
     borderRadius: 24,
     borderWidth: 3,
-    borderColor: '#eab308',
+    borderColor: '#10B981',
     backgroundColor: 'transparent',
-    boxShadow: '0 0 20px rgba(234, 179, 8, 0.4)',
   },
   scannerHint: {
     marginTop: 24,
-    color: '#f8fafc',
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
     textAlign: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    backgroundColor: 'rgba(16, 185, 129, 0.9)',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 12,
