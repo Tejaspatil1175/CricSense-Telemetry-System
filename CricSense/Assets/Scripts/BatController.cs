@@ -13,8 +13,8 @@ namespace CricSense
     {
         [Header("Stance & Crease Configuration")]
         [Tooltip("True for Left-Handed batsman, False for Right-Handed batsman stance.")]
-        public bool isLeftHanded = true;
-        public Vector3 stanceOffset = new Vector3(-0.28f, 0.40f, 2.70f);
+        public bool isLeftHanded = false;
+        public Vector3 stanceOffset = new Vector3(0.30f, 0.62f, 3.05f);
 
         [Header("Motion & Smoothing")]
         [Range(0.01f, 1.0f)]

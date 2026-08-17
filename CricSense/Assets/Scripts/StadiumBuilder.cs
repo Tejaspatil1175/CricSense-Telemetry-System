@@ -20,6 +20,7 @@ namespace CricSense
         public Material mrfRedMaterial;
         public Material padWhiteMaterial;
         public Material helmetNavyMaterial;
+        public Material skinMaterial;
 
         private void Awake()
         {
@@ -106,73 +107,89 @@ namespace CricSense
             }
         }
 
+        /// <summary>
+        /// Returns a shader that actually renders in the active render pipeline.
+        /// Fixes the "everything is magenta" bug caused by using the legacy
+        /// "Standard" shader inside a URP project (URP cannot render it).
+        /// </summary>
+        private Shader GetShader()
+        {
+            Shader s = Shader.Find("Universal Render Pipeline/Lit");
+            if (s == null) s = Shader.Find("Universal Render Pipeline/Simple Lit");
+            if (s == null) s = Shader.Find("Standard");
+            if (s == null) s = Shader.Find("Legacy Shaders/Diffuse");
+            return s;
+        }
+
+        private Material MakeMaterial(Color color, float smoothness)
+        {
+            Material mat = new Material(GetShader());
+            mat.color = color;
+
+            // URP Lit uses "_Smoothness", legacy Standard uses "_Glossiness".
+            if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", smoothness);
+            if (mat.HasProperty("_Glossiness")) mat.SetFloat("_Glossiness", smoothness);
+            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
+
+            return mat;
+        }
+
         private void CreateDefaultMaterials()
         {
             if (grassMaterial == null)
-            {
-                grassMaterial = new Material(Shader.Find("Standard"));
-                grassMaterial.color = new Color(0.10f, 0.42f, 0.18f);
-                grassMaterial.SetFloat("_Glossiness", 0.15f);
-            }
+                grassMaterial = MakeMaterial(new Color(0.10f, 0.42f, 0.18f), 0.15f);
+
             if (pitchMaterial == null)
-            {
-                pitchMaterial = new Material(Shader.Find("Standard"));
-                pitchMaterial.color = new Color(0.68f, 0.54f, 0.36f);
-                pitchMaterial.SetFloat("_Glossiness", 0.2f);
-            }
+                pitchMaterial = MakeMaterial(new Color(0.68f, 0.54f, 0.36f), 0.2f);
+
             if (woodMaterial == null)
-            {
-                woodMaterial = new Material(Shader.Find("Standard"));
-                woodMaterial.color = new Color(0.88f, 0.72f, 0.48f);
-                woodMaterial.SetFloat("_Glossiness", 0.3f);
-            }
+                woodMaterial = MakeMaterial(new Color(0.88f, 0.72f, 0.48f), 0.3f);
+
             if (ballMaterial == null)
-            {
-                ballMaterial = new Material(Shader.Find("Standard"));
-                ballMaterial.color = new Color(0.82f, 0.18f, 0.12f);
-                ballMaterial.SetFloat("_Glossiness", 0.65f);
-            }
+                ballMaterial = MakeMaterial(new Color(0.82f, 0.18f, 0.12f), 0.65f);
+
             if (whiteLineMaterial == null)
-            {
-                whiteLineMaterial = new Material(Shader.Find("Standard"));
-                whiteLineMaterial.color = Color.white;
-            }
+                whiteLineMaterial = MakeMaterial(Color.white, 0.1f);
+
             if (indiaJerseyMaterial == null)
-            {
-                indiaJerseyMaterial = new Material(Shader.Find("Standard"));
-                indiaJerseyMaterial.color = new Color(0.0f, 0.18f, 0.38f); // Team India Navy Blue
-                indiaJerseyMaterial.SetFloat("_Glossiness", 0.4f);
-            }
+                indiaJerseyMaterial = MakeMaterial(new Color(0.02f, 0.20f, 0.45f), 0.4f); // Team India Blue
+
             if (mrfRedMaterial == null)
-            {
-                mrfRedMaterial = new Material(Shader.Find("Standard"));
-                mrfRedMaterial.color = new Color(0.88f, 0.11f, 0.28f); // Vibrant MRF Red
-                mrfRedMaterial.SetFloat("_Glossiness", 0.6f);
-            }
+                mrfRedMaterial = MakeMaterial(new Color(0.88f, 0.11f, 0.28f), 0.6f); // Vibrant MRF Red
+
             if (padWhiteMaterial == null)
-            {
-                padWhiteMaterial = new Material(Shader.Find("Standard"));
-                padWhiteMaterial.color = new Color(0.96f, 0.96f, 0.96f);
-                padWhiteMaterial.SetFloat("_Glossiness", 0.2f);
-            }
+                padWhiteMaterial = MakeMaterial(new Color(0.96f, 0.96f, 0.96f), 0.2f);
+
             if (helmetNavyMaterial == null)
-            {
-                helmetNavyMaterial = new Material(Shader.Find("Standard"));
-                helmetNavyMaterial.color = new Color(0.0f, 0.12f, 0.26f);
-                helmetNavyMaterial.SetFloat("_Glossiness", 0.7f);
-            }
+                helmetNavyMaterial = MakeMaterial(new Color(0.0f, 0.12f, 0.26f), 0.7f);
+
+            if (skinMaterial == null)
+                skinMaterial = MakeMaterial(new Color(0.62f, 0.44f, 0.32f), 0.1f); // Indian skin tone
         }
 
         private void BuildFieldAndPitch()
         {
             if (GameObject.Find("CricketField") != null) return;
 
-            // Outer Green Stadium Field
+            // Outer Green Stadium Field - standard cricket ground, 65m boundary radius on all sides
             GameObject fieldObj = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             fieldObj.name = "CricketField";
             fieldObj.transform.position = new Vector3(0f, -0.05f, -3.0f);
-            fieldObj.transform.localScale = new Vector3(55f, 0.05f, 55f);
+            fieldObj.transform.localScale = new Vector3(130f, 0.05f, 130f); // 130 = 2 x 65m radius
             fieldObj.GetComponent<Renderer>().sharedMaterial = grassMaterial;
+
+            // White boundary rope line at the 65m edge
+            GameObject boundaryRing = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            boundaryRing.name = "BoundaryRope";
+            boundaryRing.transform.position = new Vector3(0f, 0.005f, -3.0f);
+            boundaryRing.transform.localScale = new Vector3(130.4f, 0.002f, 130.4f);
+            Collider boundaryCol = boundaryRing.GetComponent<Collider>();
+            if (boundaryCol != null)
+            {
+                if (Application.isPlaying) Destroy(boundaryCol);
+                else DestroyImmediate(boundaryCol);
+            }
+            boundaryRing.GetComponent<Renderer>().sharedMaterial = whiteLineMaterial;
 
             // Rectangular Pitch Strip (22m length x 3m width)
             GameObject pitchObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -373,6 +390,7 @@ namespace CricSense
             head.transform.SetParent(playerObj.transform);
             head.transform.localPosition = new Vector3(0f, 1.45f, 0f);
             head.transform.localScale = new Vector3(0.22f, 0.22f, 0.22f);
+            head.GetComponent<Renderer>().sharedMaterial = skinMaterial;
             animator.headTransform = head.transform;
 
             GameObject helmet = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -463,6 +481,7 @@ namespace CricSense
             head.transform.SetParent(bowlerObj.transform);
             head.transform.localPosition = new Vector3(0f, 1.45f, 0f);
             head.transform.localScale = new Vector3(0.20f, 0.20f, 0.20f);
+            head.GetComponent<Renderer>().sharedMaterial = skinMaterial;
 
             // Bowling Arm
             GameObject arm = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
