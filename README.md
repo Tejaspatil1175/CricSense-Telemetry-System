@@ -1,6 +1,6 @@
 # CricSense Telemetry System
 
-A professional high-precision motion tracking system and real-time telemetry pipeline for physical cricket bats. The system utilizes a dual-tier architecture: a mobile-based IoT hardware telemetry collector and a high-performance PC/Laptop game processing engine.
+A professional high-precision motion tracking system, real-time telemetry pipeline, and 3D simulation engine for physical cricket bats. The system utilizes a multi-tier architecture: a mobile-based IoT hardware telemetry collector, a high-performance Node.js WebSocket receiver server, and a Unity 3D cricket match simulation engine.
 
 ---
 
@@ -18,98 +18,173 @@ A professional high-precision motion tracking system and real-time telemetry pip
 
 ---
 
-## Tech Stack & Core Technologies
+## 🛠 Tech Stack & Core Technologies
 
 ![React Native](https://img.shields.io/badge/React_Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 ![Expo](https://img.shields.io/badge/Expo_SDK_54-000000?style=for-the-badge&logo=expo&logoColor=white)
-![JavaScript](https://img.shields.io/badge/JavaScript-ES6+-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
+![Unity](https://img.shields.io/badge/Unity_3D-000000?style=for-the-badge&logo=unity&logoColor=white)
+![C#](https://img.shields.io/badge/C%23-239120?style=for-the-badge&logo=csharp&logoColor=white)
 ![Node.js](https://img.shields.io/badge/Node.js-18+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-ES6+-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
+![WebSockets](https://img.shields.io/badge/WebSockets-Realtime-010101?style=for-the-badge&logo=socketdotio&logoColor=white)
 ![Android](https://img.shields.io/badge/Android-Supported-3DDC84?style=for-the-badge&logo=android&logoColor=white)
 ![iOS](https://img.shields.io/badge/iOS-Supported-000000?style=for-the-badge&logo=apple&logoColor=white)
-![Babel](https://img.shields.io/badge/Babel-F9DC3E?style=for-the-badge&logo=babel&logoColor=black)
 
 ---
 
-## System Architecture Overview
+## 🏗 System Architecture Overview
 
-The system consists of two primary operational components:
+The system consists of three primary operational tiers:
 
-1. **Hardware Sensor Bat Controller (Mobile Application)**
+1. **Hardware Sensor Bat Controller (Mobile Application - `app/`)**
    - Mounted onto a physical cricket bat or held as a dedicated controller.
-   - Features a modular UI with Top Header (Account profile), Main Content View, and Bottom Navigation Footer (**Home**, **Data**, **Settings**).
-   - Captures high-frequency 9-DOF motion telemetry via onboard Accelerometer, Gyroscope, DeviceMotion (Rotation & Orientation), and Magnetometer sensors at 50ms intervals (20Hz).
-   - Attaches microsecond hardware event timestamps and high-resolution device clock timestamps (`Date.now()`).
+   - Modular navigation layout with Header, Tab Views (**Home**, **Data**, **Settings**), and Footer.
+   - Captures high-frequency 9-DOF motion telemetry via onboard Accelerometer, Gyroscope, DeviceMotion (Rotation & Orientation), and Magnetometer sensors at customizable intervals (10ms to 100ms, default 50ms / 20Hz).
+   - Streams telemetry packets with microsecond hardware timestamps to the PC receiver over Local Wi-Fi WebSockets or public cloud tunnel.
 
-2. **Game Processing Engine (PC / Laptop)**
-   - Receives and parses real-time sensor data packet streams from the bat controller.
-   - Computes orientation compensation, trajectory dynamics, impact timing, stroke force magnitude, and bat speed (km/h).
-   - Renders the interactive Cricket Game simulation on the primary PC or Laptop display.
+2. **Telemetry Receiver & Web Server (`server/`)**
+   - Lightweight Node.js HTTP & WebSocket server operating on port `8080`.
+   - Real-time physics engine (`physicsEngine.js`) calculating angular velocity, impact force magnitude, stroke timing, and swing speed (km/h).
+   - Embedded Web Dashboard (`index.html`) and HTML5 Web Game Receiver (`game.html`).
+   - Integrated LocalTunnel support for remote streaming outside local Wi-Fi networks.
 
----
-
-## Modular Application Navigation Structure
-
-- **Header Component**: Displays CricSense branding, active PC connection status, and Account profile avatar.
-- **Home Screen**: Displays game information, system architecture overview, bat controller mounting instructions, and readiness status.
-- **Data Screen**: Displays real-time 9-DOF sensor cards (Accelerometer, Gyroscope, DeviceMotion Rotation/Orientation, Magnetometer, status badges, and timestamps).
-- **Settings Screen**: Allows customizing telemetry sampling rate (10ms to 100ms), configuring PC Server IP pairing, and performing bat sensor calibration.
-- **Footer Navigation Bar**: Persistent tab bar at the bottom allowing seamless switching between **Home**, **Data**, and **Settings**.
+3. **Unity 3D Game Engine & Stadium Simulation (`CricSense/`)**
+   - Built with Unity 3D engine and C# scripting.
+   - Procedurally generated 3D Cricket Stadium (`StadiumBuilder.cs`) featuring seating stands, floodlight towers, pitch markers, boundary ropes, and grandstands.
+   - Motion-controlled Bat Controller system (`BatController.cs`), realistic Ball Physics (`BallPhysics.cs`), Automated Bowling Machine (`BowlingMachine.cs`), Bowler & Batter animations (`BowlerAnimator.cs`, `PlayerAnimator.cs`), and dynamic camera tracking (`CameraController.cs`).
 
 ---
 
-## Repository Structure
+## 📂 Repository Structure
 
 ```
 motion sensor game/
-├── .gitignore             # Version control exclusions for dependencies and build artifacts
 ├── README.md              # Project documentation and system architecture guide
-└── app/                   # Mobile Sensor Telemetry Client
-    ├── App.js             # Root container & navigation state
-    ├── app.json           # Expo application configuration
-    ├── babel.config.js    # Babel compiler configuration
-    ├── package.json       # Dependencies and build scripts
-    └── src/               # Modular application codebase
-        ├── components/    # Reusable UI components
-        │   ├── Header.js  # Top bar with account button and PC connection badge
-        │   └── Footer.js  # Bottom tab bar (Home, Data, Settings)
-        ├── hooks/         # Custom React hooks
-        │   └── useSensorData.js  # Sensor subscription and telemetry state manager
-        └── screens/       # Screen view pages
-            ├── HomeScreen.js      # Game overview & bat mounting guide
-            ├── DataScreen.js      # Live real-time multi-sensor telemetry metrics
-            └── SettingsScreen.js  # Telemetry frequency, server IP & calibration
+├── .gitignore             # Version control exclusions
+│
+├── app/                   # Mobile Sensor Telemetry Client (React Native + Expo)
+│   ├── App.js             # Root container & navigation state
+│   ├── app.json           # Expo application configuration
+│   ├── babel.config.js    # Babel compiler configuration
+│   ├── package.json       # Mobile client dependencies
+│   └── src/
+│       ├── components/    # Reusable UI components (Header, Footer)
+│       ├── hooks/         # Custom React hooks (useSensorData)
+│       └── screens/       # Screen views (HomeScreen, DataScreen, SettingsScreen)
+│
+├── server/                # Telemetry Receiver & Web Dashboard (Node.js + WebSockets)
+│   ├── server.js          # Entry point (HTTP + WebSocket server on port 8080)
+│   ├── package.json       # Server dependencies (ws, localtunnel)
+│   ├── calibrationProfile.json # Bat sensor calibration parameters
+│   ├── public/            # Static dashboard assets & web game receiver
+│   │   ├── index.html     # Web Telemetry Receiver Dashboard
+│   │   ├── game.html      # HTML5 Web Game View
+│   │   └── css/ js/       # Dashboard styles and dynamic charts
+│   └── src/               # Core server utilities
+│       ├── physicsEngine.js   # Stroke force, impact timing & bat speed calculations
+│       ├── websocketHandler.js # Client pairing & real-time streaming protocol
+│       ├── routes.js          # REST API endpoints & static routing
+│       ├── networkUtils.js    # Local IP auto-discovery
+│       └── tunnelManager.js   # LocalTunnel public URL provisioner
+│
+└── CricSense/             # Unity 3D Game Simulation Engine
+    ├── CricSense.slnx     # C# solution environment file
+    └── Assets/
+        ├── Models/        # 3D player rigs and asset models
+        ├── Materials/     # Stadium and pitch surface shaders
+        └── Scripts/       # Unity C# Core Simulation Logic
+            ├── StadiumBuilder.cs   # Procedural 3D Stadium construction
+            ├── BatController.cs    # Sensor-driven 3D bat motion handler
+            ├── BallPhysics.cs      # Ball trajectory & collision dynamics
+            ├── BowlingMachine.cs   # Automated delivery system
+            ├── BowlerAnimator.cs   # Bowler run-up & release animation
+            ├── PlayerAnimator.cs   # Batter stance & shot execution
+            ├── CameraController.cs # Dynamic camera tracking
+            ├── HUDManager.cs       # Real-time game score & telemetry overlay
+            ├── GameManager.cs      # Match rules & flow state machine
+            └── StumpGroup.cs       # Wicket physics & bail collision handler
 ```
 
 ---
 
-## Installation & Deployment
+## 📡 Telemetry & Motion Pipeline
 
-### Prerequisites
-- Node.js (Version 18.0.0 or higher)
-- npm or yarn package manager
-- Expo Go mobile application for physical sensor acquisition
+```
+┌────────────────────────┐      WebSocket (ws://)       ┌────────────────────────┐
+│  Mobile Bat Controller │ ───────────────────────────► │ Node.js Telemetry Server│
+│  (React Native / Expo) │      Local Wi-Fi / Tunnel    │  (Port 8080 Engine)    │
+└────────────────────────┘                              └───────────┬────────────┘
+                                                                    │
+                                                     WebSocket / Direct Telemetry
+                                                                    │
+                                                                    ▼
+                                                        ┌────────────────────────┐
+                                                        │ Unity 3D Game Engine   │
+                                                        │ (CricSense Stadium)    │
+                                                        └────────────────────────┘
+```
 
-### Setup Instructions
-
-1. Navigate to the mobile client directory:
-   ```bash
-   cd app
-   ```
-
-2. Install required dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Launch the sensor acquisition server:
-   ```bash
-   npx expo start
-   ```
-
-4. Pair the mobile controller device by scanning the QR code using Expo Go.
+- **Data Frequency**: Default 20 Hz sampling rate (50ms packets), adjustable down to 10ms (100 Hz).
+- **Sensors Captured**: 
+  - **Accelerometer**: 3-axis linear acceleration ($\text{m/s}^2$).
+  - **Gyroscope**: 3-axis angular rotation speed ($\text{rad/s}$).
+  - **DeviceMotion**: Absolute 3D rotation quaternions and Euler orientation angles ($\alpha, \beta, \gamma$).
+  - **Magnetometer**: 3-axis magnetic field vector ($\mu T$).
+- **Calculated Metrics**: Bat speed ($\text{km/h}$), stroke acceleration magnitude, swing arc angle, impact timestamp precision.
 
 ---
 
-## License
+## 🚀 Installation & Deployment
+
+### Prerequisites
+- **Node.js**: Version 18.0.0 or higher
+- **Package Manager**: `npm` or `yarn`
+- **Mobile Device**: Expo Go app installed (Android/iOS)
+- **Unity Editor**: Unity 2022.3 LTS or newer (for Unity 3D simulation)
+
+---
+
+### 1. Launch Telemetry Receiver Server
+
+```bash
+cd server
+npm install
+npm start
+```
+* The server will bind to `0.0.0.0:8080`.
+* Web Receiver Dashboard: `http://localhost:8080`
+* WebSocket Endpoint: `ws://<YOUR_LOCAL_IP>:8080`
+
+---
+
+### 2. Launch Mobile Bat Controller App
+
+```bash
+cd app
+npm install
+npx expo start
+```
+* Scan the generated QR code using **Expo Go** on your Android or iOS device.
+* Open the **Settings** screen in the app, enter your PC's IP address (displayed in the server terminal), and connect.
+
+---
+
+### 3. Launch Unity 3D Cricket Arena (Optional / PC Engine)
+
+1. Open **Unity Hub** and click **Add**.
+2. Select the `CricSense/` folder.
+3. Open the project in Unity Editor and press **Play** to start the 3D stadium simulation.
+
+---
+
+## ⚙️ Calibration & Configuration
+
+- **Calibration**: Perform bat baseline zeroing via the app's **Settings** screen or through `server/calibrationProfile.json`.
+- **Sampling Rate**: Configurable between 10ms and 100ms to balance battery efficiency and motion tracking precision.
+
+---
+
+## 📄 License
 
 Distributed under the MIT License. Copyright (c) 2026 CricSense Engineering.
+
